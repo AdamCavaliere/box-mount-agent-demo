@@ -2,7 +2,8 @@
 .env.local
 secrets/*
 !secrets/.gitkeep
-private/
+# Box Mount preview binary: committed (private repo); the downloaded tarball is not.
+private/*.tar.gz
 __pycache__/
 .venv/
 .temporal/
