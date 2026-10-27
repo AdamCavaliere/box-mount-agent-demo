@@ -1,0 +1,20 @@
+[project]
+name = "box-mount-agent-demo"
+version = "0.1.0"
+description = "Four agents on the Temporal Agent Harness, handing documents to each other through Box Mount"
+requires-python = ">=3.12"
+dependencies = [
+    # The harness VFS (ActivityFileSystem) is on main after the 0.6.0 tag, so pin a main commit.
+    "temporal-agent-harness[ui,code-mode,openai-agents] @ git+https://github.com/temporal-community/temporal-agent-harness@091c8756126ca9684e0b8fe57d82d9122c29f517",
+    "pypdf>=5.0",
+]
+
+[dependency-groups]
+# Only for generating the demo's seed PDFs on the host.
+seed = ["reportlab>=4.2"]
+
+[tool.uv]
+package = false
+# Match the harness's own lockfile at that commit: its OpenAI streaming observer breaks on newer
+# openai SDK event shapes ("'ResponseFunctionCallArgumentsDoneEvent' object has no attribute 'name'").
+constraint-dependencies = ["openai==3.8.0", "openai-agents==0.22.0", "pydantic==2.13.4"]

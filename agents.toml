@@ -1,0 +1,25 @@
+# The agent you start from the Harness UI. It starts the three specialists itself, each as a
+# subagent on its own task queue (box-extractor, box-compliance, box-reviewer).
+
+[[agents]]
+key = "vendor-intake"
+workflow_type = "CaseCoordinatorAgent"
+agent = "demo.agents.coordinator:CoordinatorAgentWorkflow"
+task_queue = "box-coordinator"
+label = "Vendor Packet Intake (Box Mount)"
+description = """
+Coordinates three agents, each in its own Linux sandbox, that share a Box folder through Box \
+Mount: an Extractor, a Compliance checker and a Contract reviewer. Ask it to "Process the new \
+vendor packet in Incoming". Open the VFS File Mounts pane to watch /box, and the AGENT STATE \
+pane for the case board."""
+
+[[agents]]
+key = "contract-review"
+workflow_type = "BoxRelayAgent"
+agent = "demo.agents.relay:BoxRelayAgentWorkflow"
+task_queue = "booth-coordinator"
+label = "Box Relay (booth)"
+description = """
+The short booth demo: an Extractor and a Contract reviewer, each in its own sandbox, hand a \
+contract review to each other through Box. Type "go". Then edit Playbook/playbook.md in Box and \
+type "re-review". Needs the booth sandboxes (just booth-up)."""

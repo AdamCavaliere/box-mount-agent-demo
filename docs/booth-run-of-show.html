@@ -1,0 +1,304 @@
+<title>Box Relay Booth Run of Show</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Instrument+Sans:ital,wght@0,400;0,500;0,600;0,700;1,400&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: one working column for the booth (read it on a laptop beside the demo), steps as numbered rows, commands as copyable chips. */
+:root {
+  --bg: #f4f6f6;
+  --paper: #ffffff;
+  --ink: #142023;
+  --muted: #55666a;
+  --rule: #d6dedf;
+  --accent: #0b6e6e;
+  --accent-soft: #e2f0ef;
+  --code: #eaf0f0;
+  --see: #2f6a3b;
+  --see-bg: #e6f2e8;
+  --warn: #8a4b00;
+  --warn-bg: #fbeedb;
+  --say: #3e4a8c;
+  --say-bg: #eceefa;
+  --sans: "Instrument Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --mono: "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0f1617; --paper: #152022; --ink: #e2eaeb; --muted: #97a8ab; --rule: #27363a;
+    --accent: #5fc3bf; --accent-soft: #163434; --code: #1b2a2d;
+    --see: #9ad3a6; --see-bg: #19301f; --warn: #f0bf7d; --warn-bg: #352812; --say: #b3bbf2; --say-bg: #1f2340;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #0f1617; --paper: #152022; --ink: #e2eaeb; --muted: #97a8ab; --rule: #27363a;
+  --accent: #5fc3bf; --accent-soft: #163434; --code: #1b2a2d;
+  --see: #9ad3a6; --see-bg: #19301f; --warn: #f0bf7d; --warn-bg: #352812; --say: #b3bbf2; --say-bg: #1f2340;
+  color-scheme: dark;
+}
+body { background: var(--bg); color: var(--ink); font: 400 16px/1.6 var(--sans); }
+.page { max-width: 900px; margin: 0 auto; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); padding-block: 36px 72px; display: grid; gap: 40px; }
+h1, h2, h3 { margin: 0; line-height: 1.15; text-wrap: balance; }
+h1 { font-size: clamp(30px, 5vw, 42px); font-weight: 700; letter-spacing: -0.015em; }
+h2 { font-size: 23px; font-weight: 700; display: flex; align-items: baseline; gap: 12px; flex-wrap: wrap; }
+h2 .when { font: 500 12px/1 var(--mono); letter-spacing: 0.06em; text-transform: uppercase; color: var(--accent); }
+h3 { font-size: 17px; font-weight: 600; }
+p { margin: 0; }
+a { color: var(--accent); }
+a:focus-visible, button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+section { display: grid; gap: 16px; }
+.lede { font-size: 18px; max-width: 64ch; }
+.eyebrow { font: 500 12px/1 var(--mono); letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); }
+.prose { max-width: 68ch; display: grid; gap: 10px; }
+code { font-family: var(--mono); font-size: 0.88em; background: var(--code); padding: 1px 5px; border-radius: 3px; overflow-wrap: anywhere; }
+ul, ol { margin: 0; padding-left: 1.2em; display: grid; gap: 6px; }
+
+.facts { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; }
+.fact { background: var(--paper); border: 1px solid var(--rule); border-radius: 6px; padding: 10px 14px; display: grid; gap: 2px; }
+.fact b { font-size: 20px; font-weight: 700; font-variant-numeric: tabular-nums; }
+.fact span { font-size: 13px; color: var(--muted); }
+
+.table-wrap { overflow-x: auto; background: var(--paper); border: 1px solid var(--rule); border-radius: 6px; }
+table { border-collapse: collapse; width: 100%; font-size: 14.5px; }
+th, td { text-align: left; vertical-align: top; padding: 9px 12px; border-bottom: 1px solid var(--rule); }
+th { font-size: 12px; font-weight: 600; letter-spacing: 0.05em; text-transform: uppercase; color: var(--muted); background: var(--code); }
+tr:last-child td { border-bottom: 0; }
+td:first-child { font-weight: 600; white-space: nowrap; }
+
+.steps { list-style: none; padding: 0; display: grid; gap: 12px; counter-reset: step; }
+.step { counter-increment: step; display: grid; grid-template-columns: 34px 1fr; gap: 4px 14px; background: var(--paper); border: 1px solid var(--rule); border-radius: 6px; padding: 14px 16px; }
+.step::before { content: counter(step); font: 700 15px/1 var(--sans); color: var(--accent); background: var(--accent-soft); border-radius: 50%; width: 30px; height: 30px; display: grid; place-items: center; grid-row: 1 / span 3; }
+.step > * { min-width: 0; }
+.step .what { color: var(--muted); font-size: 14.5px; }
+
+.cmd { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.cmd code { font-size: 14px; padding: 5px 9px; background: var(--code); border: 1px solid var(--rule); }
+.cmd .term { font: 500 11px/1 var(--mono); letter-spacing: 0.06em; text-transform: uppercase; color: var(--muted); }
+button.copy { font: 500 12px/1 var(--sans); color: var(--accent); background: transparent; border: 1px solid var(--rule); border-radius: 4px; padding: 5px 8px; cursor: pointer; }
+button.copy:hover { background: var(--accent-soft); }
+
+.tag { display: inline-block; font: 600 11px/1 var(--mono); letter-spacing: 0.05em; text-transform: uppercase; padding: 4px 7px; border-radius: 3px; margin-right: 6px; white-space: nowrap; }
+.tag.see { color: var(--see); background: var(--see-bg); }
+.tag.say { color: var(--say); background: var(--say-bg); }
+.tag.warn { color: var(--warn); background: var(--warn-bg); }
+.line { display: block; }
+.line + .line { margin-top: 6px; }
+
+.layout { display: grid; grid-template-columns: 1.15fr 1fr; grid-template-rows: auto auto; gap: 8px; }
+.pane { background: var(--paper); border: 1px solid var(--rule); border-radius: 6px; padding: 12px 14px; display: grid; gap: 4px; min-width: 0; }
+.pane b { font-size: 14px; }
+.pane span { font-size: 13px; color: var(--muted); }
+.pane.wide { grid-column: 1 / -1; }
+@media (max-width: 620px) { .layout { grid-template-columns: 1fr; } }
+
+.beat { background: var(--paper); border: 1px solid var(--rule); border-radius: 6px; padding: 16px 18px; display: grid; gap: 10px; }
+.beat header { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; }
+.beat .time { font: 500 12px/1 var(--mono); color: var(--muted); }
+.beat .optional { font: 600 11px/1 var(--mono); letter-spacing: 0.05em; text-transform: uppercase; color: var(--accent); background: var(--accent-soft); padding: 4px 7px; border-radius: 3px; }
+.callout { border-left: 3px solid var(--warn); padding: 4px 0 4px 14px; max-width: 68ch; }
+footer { color: var(--muted); font-size: 13px; border-top: 1px solid var(--rule); padding-top: 14px; }
+@media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+</style>
+
+<main class="page">
+
+<header style="display:grid;gap:12px">
+  <p class="eyebrow">Booth demo · Temporal Agent Harness × Box Mount</p>
+  <h1>Box Relay Booth Run of Show</h1>
+  <p class="lede">Two AI agents, each in its own Linux sandbox, hand a contract review to each other through a Box folder. Temporal makes every handoff, wait and crash durable, and a person approves what gets published. This page covers start-up, what each piece does, and how to run the demo.</p>
+  <div class="facts">
+    <div class="fact"><b>~45 s</b><span>"go" to approval card</span></div>
+    <div class="fact"><b>2–4 s</b><span>File crossing sandboxes via Box</span></div>
+    <div class="fact"><b>~6 s</b><span>Crash to resumed model call</span></div>
+    <div class="fact"><b>10 min</b><span>Idle sessions close themselves</span></div>
+  </div>
+</header>
+
+<section>
+  <h2>What each piece does</h2>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>Piece</th><th>Runs where</th><th>What it does</th></tr></thead>
+      <tbody>
+        <tr><td>Temporal dev server</td><td>your Mac · :7233, UI :8233</td><td>Records every step of every agent, so work survives crashes and waits. The Temporal UI shows each agent's history and status line.</td></tr>
+        <tr><td>Session-manager worker</td><td>your Mac</td><td>Runs the Harness's session-manager workflows, which keep the list of chat sessions and start new ones.</td></tr>
+        <tr><td>Booth UI server</td><td>your Mac · :8000</td><td>The Agent Harness UI where you type and approve. It offers only Box Relay and uses its own <code>booth-session-manager</code>.</td></tr>
+        <tr><td><code>sandbox-booth-coordinator</code></td><td>Docker</td><td>The relay: a scripted workflow (no AI model) that runs the two agents in order, passes file fingerprints, and asks a person to approve publishing.</td></tr>
+        <tr><td><code>sandbox-booth-extractor</code></td><td>Docker</td><td>AI agent 1. Reads the contract PDF from its Box Mount and writes <code>extraction.json</code> back to Box: every clause verbatim plus the key terms (payment days, renewal, liability caps, indemnity, termination, insurance, governing law).</td></tr>
+        <tr><td><code>sandbox-booth-reviewer</code></td><td>Docker</td><td>AI agent 2. Never sees the PDF. Waits for <code>extraction.json</code> to arrive through Box, reviews the contract from it against the playbook, and writes <code>review_memo.md</code>.</td></tr>
+        <tr><td>Box Mount (in each sandbox)</td><td>Docker</td><td>Keeps the <code>Booth/</code> folder synced both ways with Box. It is the only thing the sandboxes share. Agents never see Box credentials.</td></tr>
+        <tr><td>Box folder <code>Booth/</code></td><td>Box</td><td><code>Incoming/</code> contract, <code>Playbook/playbook.md</code> rules, <code>Work/</code> agent output per run, <code>Reviewed/</code> approved memos.</td></tr>
+        <tr><td>Ticker (<code>just ticker</code>)</td><td>a terminal</td><td>One line per file crossing between sandboxes, with how long Box took.</td></tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<section>
+  <h2>Before the event <span class="when">day before or morning of</span></h2>
+  <ol class="steps">
+    <li class="step">
+      <h3>Docker Desktop running, Box and OpenAI keys in place</h3>
+      <p class="what"><code>secrets/box-jwt-config.json</code>, <code>.env</code> (Box folder IDs) and <code>.env.local</code> (OpenAI key) are already set up. Make sure you're signed in to Box in the browser you'll present from.</p>
+    </li>
+    <li class="step">
+      <h3>Start the stack (next section), then reset the booth folder</h3>
+      <div class="cmd"><code>just booth-reset</code><button class="copy" type="button" data-copy="cd ~/box-mount-agent-demo && just booth-reset">Copy</button></div>
+      <p class="what">About a minute. Clears old runs and published memos and restores the original playbook. Never delete files in the Box folder by hand while sandboxes run (a Box Mount bug can strand later files).</p>
+    </li>
+    <li class="step">
+      <h3>Do one full rehearsal run</h3>
+      <p class="what">Run the core demo and both add-ons once, end to end, on the booth network.</p>
+    </li>
+  </ol>
+</section>
+
+<section>
+  <h2>Start-up <span class="when">in order, one terminal each</span></h2>
+  <div class="beat">
+    <header><h3>One command</h3><span class="time">~45 s to ready</span></header>
+    <div class="cmd"><code>just booth-launch</code><button class="copy" type="button" data-copy="cd ~/box-mount-agent-demo && just booth-launch">Copy</button></div>
+    <span class="line">Opens one Ghostty window with five titled tabs (Temporal, Session manager, Sandboxes, Booth UI, Ticker), starts each in the right order, and opens the Harness UI, Temporal UI and Box folder in your browser once the UI is up. The steps below are what it runs, if you'd rather start them by hand. <code>just booth-launch dry</code> opens the tabs but only prints the commands. The first run asks macOS for permission to control Ghostty: allow it.</span>
+  </div>
+  <p class="prose">Run everything from <code>~/box-mount-agent-demo</code>. If the full demo's <code>just server</code> is running, stop it first: both UIs use port 8000.</p>
+  <ol class="steps">
+    <li class="step">
+      <h3>Temporal</h3>
+      <div class="cmd"><span class="term">Terminal 1</span><code>just temporal</code><button class="copy" type="button" data-copy="cd ~/box-mount-agent-demo && just temporal">Copy</button></div>
+      <p class="what"><span class="tag see">You see</span>the dev server start with its Web UI at http://localhost:8233. Leave it running.</p>
+    </li>
+    <li class="step">
+      <h3>Session-manager worker</h3>
+      <div class="cmd"><span class="term">Terminal 2</span><code>just session-manager</code><button class="copy" type="button" data-copy="cd ~/box-mount-agent-demo && just session-manager">Copy</button></div>
+      <p class="what"><span class="tag see">You see</span><code>Session manager worker ready: taskQueue='session-manager'</code></p>
+    </li>
+    <li class="step">
+      <h3>The three booth sandboxes</h3>
+      <div class="cmd"><span class="term">Terminal 3</span><code>just booth-up</code><button class="copy" type="button" data-copy="cd ~/box-mount-agent-demo && just booth-up">Copy</button><code>just status</code><button class="copy" type="button" data-copy="cd ~/box-mount-agent-demo && just status">Copy</button></div>
+      <p class="what"><span class="tag see">You see</span>after ~30 s, three lines of <code>box-mount=running  worker=up</code>. Keep this terminal for <code>just crash</code> later. First time ever: also run <code>just booth-seed</code>.</p>
+    </li>
+    <li class="step">
+      <h3>Booth UI</h3>
+      <div class="cmd"><span class="term">Terminal 4</span><code>just booth-server</code><button class="copy" type="button" data-copy="cd ~/box-mount-agent-demo && just booth-server">Copy</button></div>
+      <p class="what"><span class="tag see">You see</span><code>stream mode: minimal</code>, <code>session manager: booth-session-manager</code>, <code>Uvicorn running on http://127.0.0.1:8000</code>.</p>
+    </li>
+    <li class="step">
+      <h3>Ticker</h3>
+      <div class="cmd"><span class="term">Terminal 5</span><code>just ticker</code><button class="copy" type="button" data-copy="cd ~/box-mount-agent-demo && just ticker">Copy</button></div>
+      <p class="what"><span class="tag see">You see</span><code>Box Mount ticker: …</code>, then quiet until files move.</p>
+    </li>
+  </ol>
+</section>
+
+<section>
+  <h2>Screen layout</h2>
+  <div class="layout">
+    <div class="pane"><b>Agent Harness UI</b><span><a href="http://localhost:8000">http://localhost:8000</a>: chat, subagent cards, approval card.</span></div>
+    <div class="pane"><b>Box web app</b><span>Open at <a href="https://app.box.com/folder/427527786148">the Booth folder</a>. Files appear as agents write.</span></div>
+    <div class="pane wide"><b>Ticker terminal</b><span>Along the bottom: <code>↑ uploaded</code> / <code>↓ downloaded … +3.1 s via Box from …</code></span></div>
+    <div class="pane wide"><b>Second browser tab: Temporal UI</b><span><a href="http://localhost:8233">http://localhost:8233</a>. Workflows are named <code>contract-review-…</code>, <code>extractor-subagent-…</code>, <code>reviewer-subagent-…</code>; each shows a <em>Current Details</em> status line.</span></div>
+  </div>
+</section>
+
+<section>
+  <h2>The demo</h2>
+  <p class="prose">Open the Harness UI: it starts a Box Relay session for you. If it says the agent is closed, click <strong>New session</strong> and choose Box Relay.</p>
+
+  <article class="beat">
+    <header><h3>Open with one line</h3><span class="time">10 s</span></header>
+    <span class="line"><span class="tag say">Say</span>"Two AI agents, each in its own sandbox. They share nothing except a Box folder that Box Mount syncs into each one. Temporal makes the handoffs between them durable, and a person approves what goes out."</span>
+  </article>
+
+  <article class="beat">
+    <header><h3>Run the relay</h3><span class="time">~45 s</span></header>
+    <span class="line"><span class="tag">Do</span>Type <code>go</code> and press Enter.</span>
+    <span class="line"><span class="tag see">They see</span>The Extractor card appears and reads the contract from its Box Mount. In the ticker: <code>↑ sandbox-booth-extractor uploaded …/extraction.json</code>, then <code>↓ sandbox-booth-reviewer downloaded … +3 s via Box</code>. The file appears in Box. The Reviewer card starts, and <code>review_memo.md</code> goes up the same way.</span>
+    <span class="line"><span class="tag say">Say</span>"The reviewer never sees the PDF. It works only from what the first agent wrote to Box. Its first step, <code>wait_for_file_to_sync_from_box</code>, waits for that exact version to arrive in its own sandbox; if Box were slow, Temporal would keep retrying that step, durably."</span>
+    <span class="line"><span class="tag">Optional</span>In the Temporal tab, open <code>reviewer-subagent-…</code>: the history reads <code>wait_for_file_to_sync_from_box</code> → <code>read_handed_off_file_from_box</code> → <code>vfs.box-mount.read</code> (playbook) → <code>get_approved_clause_language</code> → <code>vfs.box-mount.write</code>. No PDF read anywhere.</span>
+  </article>
+
+  <article class="beat">
+    <header><h3>Human in the loop: approve publishing</h3><span class="time">~20 s</span></header>
+    <span class="line"><span class="tag see">They see</span>The chat says <strong>Review ready for approval</strong> with an <strong>Open review_memo.md in Box</strong> link, and a <code>publish_memo_to_reviewed_folder</code> approval card.</span>
+    <span class="line"><span class="tag">Do</span>Click the link: show the memo in Box (risk score, findings table, redlines). Then show the Temporal tab: the relay's status line says it's waiting for a person.</span>
+    <span class="line"><span class="tag say">Say</span>"Nothing is running while it waits. It could wait an hour or survive a restart. The agents did the work; a person decides what reaches Legal."</span>
+    <span class="line"><span class="tag">Do</span>Click <strong>Approve</strong>. Within ~10 s the memo appears in <code>Booth/Reviewed/</code> and the chat links the published copy. (<strong>Reject</strong> leaves it in <code>Work/</code>.)</span>
+  </article>
+
+  <article class="beat">
+    <header><h3>People edit in Box</h3><span class="optional">Add-on A</span><span class="time">~45 s</span></header>
+    <span class="line"><span class="tag">Do</span>Type <code>re-review</code>. The relay waits; its status line says "waiting for someone to edit Playbook/playbook.md in Box".</span>
+    <span class="line"><span class="tag">Do</span>In Box, open <code>Booth/Playbook/</code>. Either edit <code>playbook.md</code> (payment-terms row: <code>Net 45; Net 15 is approved for Halvorsen | Shorter than Net 15</code>), or use the file's menu → <strong>Upload New Version</strong> and pick <code>~/box-mount-agent-demo/booth/playbook.md</code>, which already has that change. Rehearse whichever you'll use.</span>
+    <span class="line"><span class="tag see">They see</span>The ticker shows <code>playbook.md</code> landing in every sandbox ("from Box, edited outside these sandboxes"). The Reviewer writes <code>review_memo_v2.md</code>, now marking payment terms OK, and the approval card returns.</span>
+    <span class="line"><span class="tag say">Say</span>"People and agents work in the same Box files. Legal changed a rule in Box; the agent picked up that exact version."</span>
+  </article>
+
+  <article class="beat">
+    <header><h3>Crash and resume</h3><span class="optional">Add-on B</span><span class="time">+6 s</span></header>
+    <span class="line"><span class="tag">Do</span>Type <code>go</code>, then right away in Terminal 3 run <code>just crash booth-reviewer</code>. It waits for the Reviewer's model call, then kills the worker process with <code>kill -9</code>.</span>
+    <span class="line"><span class="tag see">They see</span><code>killed …@sandbox-booth-reviewer (kill -9) during invoke_model_activity…</code>. The sandbox restarts the worker in a second; about 6 s later the Temporal UI shows the same model call running again as attempt 2 under a new worker PID. The memo still lands once.</span>
+    <span class="line"><span class="tag say">Say</span>"The process died mid-thought. Temporal resumed the exact step, and nothing it had already written to Box was redone."</span>
+  </article>
+</section>
+
+<section>
+  <h2>Between visitors</h2>
+  <ul class="prose">
+    <li>Type <code>go</code> again in the same session: every run gets its own <code>Work/HALVORSEN-MSA/&lt;run&gt;/</code> folder, so nothing collides.</li>
+    <li>If you did add-on A, run <code>just booth-playbook-reset</code> (a few seconds) to put the original playbook back. Box keeps the edited one in version history.</li>
+    <li>Sessions close themselves after 10 minutes with no messages. A closed session says so; click <strong>New session</strong>.</li>
+  </ul>
+</section>
+
+<section>
+  <h2>If something goes wrong</h2>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>Symptom</th><th>Fix</th></tr></thead>
+      <tbody>
+        <tr><td><code>worker=DOWN</code> in <code>just status</code></td><td>Temporal isn't running or just restarted: check Terminal 1. Workers reconnect on their own within seconds.</td></tr>
+        <tr><td>UI shows an error or can't create a session</td><td>Restart <code>just booth-server</code> (Ctrl-C, run again). It recreates its session-manager if needed.</td></tr>
+        <tr><td>Approval card doesn't appear</td><td>Reload the page. The UI updates in 5-second steps in this mode; the workflow is still waiting.</td></tr>
+        <tr><td>Nothing in the ticker</td><td>Restart <code>just ticker</code>; check <code>just status</code>.</td></tr>
+        <tr><td>"This agent is closed"</td><td>It idled out. Click <strong>New session</strong>.</td></tr>
+        <tr><td>Folder getting long, or a run looks stuck on sync</td><td><code>just booth-reset</code> (~1 min) between sessions.</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <p class="callout"><span class="tag warn">Don't</span>terminate <code>booth-session-manager</code> in the Temporal UI (it ends every session), and don't delete files in the Box folder while the sandboxes run.</p>
+</section>
+
+<section>
+  <h2>Shut down</h2>
+  <p class="prose">One command stops Temporal, the session manager, the booth UI, the ticker and the sandboxes (the Ghostty tabs stay open at a prompt):</p>
+  <div class="cmd"><code>just booth-stop</code><button class="copy" type="button" data-copy="cd ~/box-mount-agent-demo && just booth-stop">Copy</button></div>
+</section>
+
+<footer>Box Relay booth demo · ~/box-mount-agent-demo · stream mode <code>minimal</code> · reasoning effort <code>low</code> · details in README.md</footer>
+</main>
+
+<script>
+document.querySelectorAll("button.copy").forEach((btn) => {
+  btn.addEventListener("click", () => {
+    const text = btn.dataset.copy;
+    const done = () => { btn.textContent = "Copied"; setTimeout(() => (btn.textContent = "Copy"), 1500); };
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(text).then(done).catch(() => select(btn));
+    } else {
+      select(btn);
+    }
+  });
+});
+function select(btn) {
+  const code = btn.previousElementSibling;
+  if (!code) return;
+  const range = document.createRange();
+  range.selectNodeContents(code);
+  const sel = window.getSelection();
+  sel.removeAllRanges();
+  sel.addRange(range);
+  btn.textContent = "Selected";
+  setTimeout(() => (btn.textContent = "Copy"), 1500);
+}
+</script>

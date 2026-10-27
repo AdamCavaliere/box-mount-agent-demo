@@ -1,0 +1,101 @@
+# One sandbox per agent role. Each runs its own box-mount daemon over the SAME Box folder and that
+# role's agent worker. Exactly one worker sandbox per role: every activity of an agent, including
+# each Box file operation, runs on its role's task queue, so a second sandbox on the same queue
+# would split one agent's file writes across two Box Mounts (conflict copies; see README). Sandboxes share
+# nothing but Box (files) and Temporal (orchestration).
+x-sandbox: &sandbox
+  image: box-agent-sandbox:dev
+  platform: linux/arm64
+  env_file: [.env, .env.local]
+  environment:
+    TEMPORAL_ADDRESS: host.docker.internal:7233
+  extra_hosts: ["host.docker.internal:host-gateway"]
+  restart: unless-stopped
+  depends_on: [build]
+
+services:
+  # Builds the shared image once; exits immediately.
+  build:
+    image: box-agent-sandbox:dev
+    build: { context: ., dockerfile: docker/Dockerfile }
+    entrypoint: ["true"]
+    restart: "no"
+
+  coordinator:
+    <<: *sandbox
+    profiles: [full]
+    container_name: sandbox-coordinator
+    hostname: sandbox-coordinator
+    environment: { TEMPORAL_ADDRESS: "host.docker.internal:7233", DEMO_ROLE: coordinator }
+    volumes: [coordinator-data:/home/boxsvc/.box-mount, coordinator-files:/mnt/box, &code ./demo:/app/demo:ro, &scripts ./scripts:/app/scripts:ro, &payloads /tmp/temporal-large-payloads:/tmp/temporal-large-payloads, ./seed:/app/seed:ro]
+
+  extractor:
+    <<: *sandbox
+    profiles: [full]
+    container_name: sandbox-extractor
+    hostname: sandbox-extractor
+    environment: { TEMPORAL_ADDRESS: "host.docker.internal:7233", DEMO_ROLE: extractor }
+    volumes: [extractor-data:/home/boxsvc/.box-mount, extractor-files:/mnt/box, *code, *scripts, *payloads]
+
+  compliance:
+    <<: *sandbox
+    profiles: [full]
+    container_name: sandbox-compliance
+    hostname: sandbox-compliance
+    environment: { TEMPORAL_ADDRESS: "host.docker.internal:7233", DEMO_ROLE: compliance }
+    volumes: [compliance-data:/home/boxsvc/.box-mount, compliance-files:/mnt/box, *code, *scripts, *payloads]
+
+
+  reviewer:
+    <<: *sandbox
+    profiles: [full]
+    container_name: sandbox-reviewer
+    hostname: sandbox-reviewer
+    environment: { TEMPORAL_ADDRESS: "host.docker.internal:7233", DEMO_ROLE: reviewer }
+    volumes: [reviewer-data:/home/boxsvc/.box-mount, reviewer-files:/mnt/box, *code, *scripts, *payloads]
+
+  # --- Booth demo (Box Relay): its own Box folder (BOOTH_BOX_FOLDER_ID) and booth-* task queues ---
+  booth-coordinator:
+    <<: *sandbox
+    profiles: [booth]
+    container_name: sandbox-booth-coordinator
+    hostname: sandbox-booth-coordinator
+    environment: { TEMPORAL_ADDRESS: "host.docker.internal:7233", DEMO_ROLE: relay, DEMO_QUEUE_PREFIX: booth, BOX_FOLDER_ID: "${BOOTH_BOX_FOLDER_ID}", DEMO_REASONING_EFFORT: "${BOOTH_REASONING_EFFORT:-low}", DEMO_IDLE_CLOSE_MINUTES: "${BOOTH_IDLE_CLOSE_MINUTES:-10}", DEMO_STREAM_MODE: "${BOOTH_STREAM_MODE:-minimal}" }
+    volumes: [booth-coordinator-data:/home/boxsvc/.box-mount, booth-coordinator-files:/mnt/box, *code, *scripts, *payloads, ./seed:/app/seed:ro]
+
+  booth-extractor:
+    <<: *sandbox
+    profiles: [booth]
+    container_name: sandbox-booth-extractor
+    hostname: sandbox-booth-extractor
+    environment: { TEMPORAL_ADDRESS: "host.docker.internal:7233", DEMO_ROLE: extractor, DEMO_QUEUE_PREFIX: booth, BOX_FOLDER_ID: "${BOOTH_BOX_FOLDER_ID}", DEMO_REASONING_EFFORT: "${BOOTH_REASONING_EFFORT:-low}", DEMO_IDLE_CLOSE_MINUTES: "${BOOTH_IDLE_CLOSE_MINUTES:-10}", DEMO_STREAM_MODE: "${BOOTH_STREAM_MODE:-minimal}" }
+    volumes: [booth-extractor-data:/home/boxsvc/.box-mount, booth-extractor-files:/mnt/box, *code, *scripts, *payloads]
+
+  booth-reviewer:
+    <<: *sandbox
+    profiles: [booth]
+    container_name: sandbox-booth-reviewer
+    hostname: sandbox-booth-reviewer
+    environment: { TEMPORAL_ADDRESS: "host.docker.internal:7233", DEMO_ROLE: reviewer, DEMO_QUEUE_PREFIX: booth, BOX_FOLDER_ID: "${BOOTH_BOX_FOLDER_ID}", DEMO_REASONING_EFFORT: "${BOOTH_REASONING_EFFORT:-low}", DEMO_IDLE_CLOSE_MINUTES: "${BOOTH_IDLE_CLOSE_MINUTES:-10}", DEMO_STREAM_MODE: "${BOOTH_STREAM_MODE:-minimal}" }
+    volumes: [booth-reviewer-data:/home/boxsvc/.box-mount, booth-reviewer-files:/mnt/box, *code, *scripts, *payloads]
+
+
+# The Box credentials are copied into each sandbox's *-data volume by `just up`, never bind-mounted:
+# Docker Desktop's macOS file sharing ignores Linux permissions, so the agent user could read them.
+# Box Mount's folder and state stay inside the Linux VM: the daemon watches the folder with
+# inotify, which doesn't see changes made through a macOS bind mount.
+volumes:
+  coordinator-data:
+  coordinator-files:
+  extractor-data:
+  extractor-files:
+  compliance-data:
+  compliance-files:
+  reviewer-data:
+  reviewer-files:
+  booth-coordinator-data:
+  booth-coordinator-files:
+  booth-extractor-data:
+  booth-extractor-files:
+  booth-reviewer-data:
+  booth-reviewer-files:

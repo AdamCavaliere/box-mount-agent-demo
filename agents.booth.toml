@@ -1,0 +1,13 @@
+# The booth UI's registry: only Box Relay, so the UI never auto-creates a full-demo session.
+# Served by `just booth-server`, with its own session-manager workflow (booth-session-manager).
+
+[[agents]]
+key = "contract-review"
+workflow_type = "BoxRelayAgent"
+agent = "demo.agents.relay:BoxRelayAgentWorkflow"
+task_queue = "booth-coordinator"
+label = "Box Relay (booth)"
+description = """
+An Extractor and a Contract reviewer, each in its own sandbox, hand a contract review to each \
+other through Box, then a person approves publishing it. Type "go". For the edit-in-Box moment, \
+type "re-review" and edit Playbook/playbook.md in Box."""
