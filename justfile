@@ -86,6 +86,7 @@ seed:
 reset:
     #!/usr/bin/env bash
     set -euo pipefail
+    just _end-sessions box
     just _wipe full "{{sandboxes}}"
     docker compose --profile full up --no-start coordinator
     docker cp -q secrets/box-jwt-config.json sandbox-coordinator:/home/boxsvc/.box-mount/box-jwt-config.json
@@ -97,6 +98,23 @@ reset:
     just _wipe full coordinator
     just up
     echo "clean slate: run 'just status'"
+
+# End every open session and agent of one stack (prefix box or booth) by its task queues. The
+# session-manager workflows are on their own queue and keep running. A session left open across
+# a code change can't continue anyway (its history no longer matches the code), so resets start clean.
+_end-sessions prefix:
+    #!/usr/bin/env bash
+    if ! nc -z 127.0.0.1 7233 2>/dev/null; then echo "Temporal not running: no sessions to end"; exit 0; fi
+    q="ExecutionStatus='Running' AND TaskQueue IN ('{{prefix}}-coordinator','{{prefix}}-extractor','{{prefix}}-compliance','{{prefix}}-reviewer')"
+    n=$(temporal workflow count --query "$q" -o json | python3 -c "import json,sys; print(json.load(sys.stdin).get('count', 0))")
+    if [ "${n:-0}" = 0 ]; then echo "no open {{prefix}} sessions"; exit 0; fi
+    echo "ending $n open {{prefix}} session(s)/agent(s):"
+    temporal workflow list --query "$q" -o json | python3 -c "import json,sys; [print('  ', w['execution']['workflowId']) for w in json.load(sys.stdin)]"
+    temporal workflow terminate --query "$q" --reason "just {{prefix}} reset" --yes >/dev/null
+    for i in $(seq 1 15); do
+      [ "$(temporal workflow count --query "$q" -o json | python3 -c "import json,sys; print(json.load(sys.stdin).get('count', 0))")" = 0 ] && break
+      sleep 1
+    done
 
 # Remove a stack's containers and their Box Mount volumes (local copies only; Box is untouched).
 _wipe profile services:
@@ -150,11 +168,12 @@ booth-seed:
     uv run -q --group seed python scripts/make_seed.py
     docker exec -u boxsvc sandbox-booth-coordinator /app/.venv/bin/python /app/scripts/box_admin.py seed --booth
 
-# Clean slate for the booth (~1 min): clears old runs and published memos, and restores the
-# original playbook so add-on A (editing it in Box) starts fresh.
+# Clean slate for the booth (~1 min): ends any open booth sessions, clears old runs and published
+# memos, and restores the original playbook so add-on A (editing it in Box) starts fresh.
 booth-reset:
     #!/usr/bin/env bash
     set -euo pipefail
+    just _end-sessions booth
     just _wipe booth "{{booth_sandboxes}}"
     docker compose --profile booth up --no-start booth-coordinator
     docker cp -q secrets/box-jwt-config.json sandbox-booth-coordinator:/home/boxsvc/.box-mount/box-jwt-config.json
