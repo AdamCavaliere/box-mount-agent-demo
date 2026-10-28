@@ -19,6 +19,7 @@ into its own sandbox. Type "go" to run it. Afterwards, edit Playbook/playbook.md
 import asyncio
 
 from temporalio import workflow
+from temporalio.exceptions import ActivityError
 from temporalio.contrib.workflow_streams import WorkflowStream
 
 with workflow.unsafe.imports_passed_through():
@@ -150,6 +151,10 @@ class BoxRelayAgentWorkflow:
                 _call_id(), publish_memo,
                 case_id=CASE_ID, memo_path=memo.path, memo_link=link.url, summary=summary,
             )
+        except ActivityError as err:
+            reason = getattr(err.cause, "message", None) or str(err.cause or err)
+            _status(f"{CASE_ID} · could not publish: {reason[:120]}")
+            return f"\n\n**Couldn't publish:** {reason}. Type `go` for a new run."
         except ToolApprovalDenied:
             _status(f"{CASE_ID} · publishing rejected; memo stays in Work/")
             return f"\n\n**Not published.** [Open the memo in Box]({link.url}); it stays in Work/ for revision."

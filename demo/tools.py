@@ -397,6 +397,9 @@ async def publish_memo(case_id: str, memo_path: str, memo_link: str, summary: st
     """Publish a review memo to Legal: copy it from Work/ to Reviewed/ in Box. Open `memo_link` to
     read the memo before approving. Requires human approval."""
     src = MOUNT_ROOT / _relative(memo_path)
+    if not src.is_file():  # e.g. removed by a reset: retrying can't bring it back
+        raise ApplicationError(f"{memo_path} is no longer in Box, so there is nothing to publish",
+                               type="MemoMissing", non_retryable=True)
     rel_target = _relative(memo_path).replace("Work/", "Reviewed/", 1)
     target = MOUNT_ROOT / rel_target
     target.parent.mkdir(parents=True, exist_ok=True)
