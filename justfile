@@ -139,6 +139,17 @@ flaky state:
 crash sandbox:
     uv run -q python scripts/crash.py {{sandbox}}
 
+# Cheat sheet for the Crash tab that booth-launch opens.
+crash-help:
+    @echo "Crash moment (add-on B). Type go in the Booth UI, then within ~20 s:"
+    @echo ""
+    @echo "  just crash booth-reviewer     kill -9 mid model call; restarts and resumes as attempt 2"
+    @echo "  just crash booth-extractor    same, for the Extractor (run right after go)"
+    @echo "  just kill booth-reviewer      kill and keep it down: the step waits in Temporal"
+    @echo "  just revive booth-reviewer    let it come back and pick up where it was"
+    @echo "  just status                   worker and box-mount state per sandbox"
+    @echo ""
+
 # Crash a sandbox's agent worker (kill -9) and keep it down. Box Mount keeps running.
 kill sandbox:
     docker exec sandbox-{{sandbox}} sh -c 'touch /run/demo/hold; pkill -9 -f "[d]emo.worker"; echo "killed worker in $(hostname)"'

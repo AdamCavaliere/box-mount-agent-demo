@@ -10,7 +10,8 @@ on run argv
 		{"Session manager", "just _wait-temporal && just session-manager"}, ¬
 		{"Sandboxes", "just booth-up && just status"}, ¬
 		{"Booth UI", "just _wait-temporal && just _open-booth-pages-when-up & just _wait-temporal && just booth-server"}, ¬
-		{"Ticker", "just _wait-sandboxes && just ticker"}}
+		{"Ticker", "just _wait-sandboxes && just ticker"}, ¬
+		{"Crash", "just _wait-sandboxes && just crash-help"}}
 	tell application "Ghostty"
 		activate
 		set w to missing value
