@@ -198,6 +198,8 @@ booth-reset:
     echo "waiting for the changes to reach Box..."; sleep 15
     just _wipe booth booth-coordinator
     just booth-up
+    just _wait-sandboxes
+    just _verify-playbook
     echo "booth clean slate: run 'just status'"
 
 # Between visitors (a few seconds): put the original playbook back after add-on A, without a full
@@ -205,6 +207,29 @@ booth-reset:
 booth-playbook-reset:
     uv run -q --group seed python scripts/make_seed.py >/dev/null
     docker exec -u boxsvc sandbox-booth-coordinator /app/.venv/bin/python /app/scripts/box_admin.py seed --booth
+    just _verify-playbook
+
+# Wait until the agents' sandboxes have the seed playbook from Box. Box refuses uploads to a
+# locked file (e.g. left open in Box Edit after add-on A), and the local copy alone proves nothing.
+_verify-playbook:
+    #!/usr/bin/env bash
+    want=$(shasum -a 256 seed/Playbook/playbook.md | cut -d' ' -f1)
+    since=$(date -u +%Y-%m-%dT%H:%M:%SZ)
+    for i in $(seq 1 30); do
+      ok=1
+      for s in booth-extractor booth-reviewer; do
+        got=$(docker exec sandbox-$s sha256sum /mnt/box/Playbook/playbook.md 2>/dev/null | cut -d' ' -f1)
+        [ "$got" = "$want" ] || { ok=0; docker exec sandbox-$s touch /run/boxmount/requests/pulse 2>/dev/null; }
+      done
+      [ $ok = 1 ] && { echo "playbook restored (Net 45) in Box and in both agents' sandboxes"; exit 0; }
+      if docker logs --since "$since" sandbox-booth-coordinator 2>&1 | grep -q "playbook.md.*item locked"; then
+        echo "Box refused the upload: Playbook/playbook.md is LOCKED in Box."
+        echo "Unlock it in the Box web UI (… > Unlock, or close it in Box Edit), then rerun: just booth-playbook-reset"
+        exit 1
+      fi
+      sleep 3
+    done
+    echo "playbook not synced to the agents' sandboxes after 90 s; check 'just status'"; exit 1
 
 # The on-screen strip: every file crossing between booth sandboxes through Box, with timing.
 ticker:
