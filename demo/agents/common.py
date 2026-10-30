@@ -13,6 +13,11 @@ with workflow.unsafe.imports_passed_through():
     from openai.types.shared import Reasoning
 
     from temporal_agent_harness.ai_sdks.openai_agents_harness import as_openai_agent_tool
+    from temporal_agent_harness.harness.agent_protocol.events import (
+        ModelInteractionEnded,
+        ModelInteractionStarted,
+        TokenUsage,
+    )
     from temporal_agent_harness.harness.agent_workflow import AgentWorkflowRunner
 
     from ..config import MODEL, REASONING_EFFORT
@@ -56,9 +61,24 @@ async def run_model_turn(
         async for _event in result.stream_events():
             pass
     else:
-        # DEMO_STREAM_MODE=off: one plain model activity per call, no text deltas streamed.
+        # DEMO_STREAM_MODE=off/minimal: one plain model activity per call, no text deltas streamed.
         result = await Runner.run(sdk_agent, input=conversation, context=runner, max_turns=max_turns)
+        _publish_usage(runner, [r.usage for r in result.raw_responses])
     return str(result.final_output), result.to_input_list()
+
+
+def _publish_usage(runner: AgentWorkflowRunner, usages: list[Any]) -> None:
+    """Without streaming, nothing reports token usage, so the console's Tokens pane stays empty.
+    Publish one started/ended pair per model call, after the turn, carrying just the usage."""
+    for usage in usages:
+        runner.publish(ModelInteractionStarted(model=MODEL))
+        runner.publish(ModelInteractionEnded(model=MODEL, usage=TokenUsage(
+            input_tokens=usage.input_tokens,
+            output_tokens=usage.output_tokens,
+            total_tokens=usage.total_tokens,
+            thought_tokens=getattr(usage.output_tokens_details, "reasoning_tokens", None),
+            cached_tokens=getattr(usage.input_tokens_details, "cached_tokens", None),
+        )))
 
 
 def _call_id() -> str:
