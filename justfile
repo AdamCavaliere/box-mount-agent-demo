@@ -195,11 +195,13 @@ booth-reset:
     # Put the contract and the original playbook back, so add-on A (editing the playbook) starts fresh.
     uv run -q --group seed python scripts/make_seed.py >/dev/null
     docker exec -u boxsvc sandbox-booth-coordinator /app/.venv/bin/python /app/scripts/box_admin.py seed --booth
-    echo "waiting for the changes to reach Box..."; sleep 15
-    just _wipe booth booth-coordinator
+    # Start the agents' sandboxes fresh and check they get the restored playbook from Box BEFORE
+    # wiping the coordinator: until its upload lands (a Box lock blocks it), that is the only copy.
     just booth-up
     just _wait-sandboxes
     just _verify-playbook
+    just _wipe booth booth-coordinator
+    just booth-up
     echo "booth clean slate: run 'just status'"
 
 # Between visitors (a few seconds): put the original playbook back after add-on A, without a full

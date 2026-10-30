@@ -53,11 +53,16 @@ def stale_pulse_files() -> list[str]:
             if p.is_file() and (".conflict." in p.name or p.stem not in CURRENT_SANDBOXES)]
 
 
+BOOTH_TOP_LEVEL = {"Incoming", "Playbook", "Work", "Reviewed", "_sync"}
+
+
 def reset(booth: bool = False) -> None:
     strays = [p.name for p in MOUNT.glob("sandbox-*.txt")]  # misplaced pulse files
     strays += stale_pulse_files()
     if booth:  # every run and every published memo
         cases = [f"{top}/{p.name}" for top in ("Work", "Reviewed") for p in (MOUNT / top).glob("*")]
+        # The booth folder holds only these; anything else at the top was misplaced by Box Mount.
+        strays += [p.name for p in MOUNT.iterdir() if p.name not in BOOTH_TOP_LEVEL]
     else:
         cases = [f"Work/{CASE}", f"Reviewed/{CASE}"]
     for rel in [*cases, *SCRATCH, *strays]:
