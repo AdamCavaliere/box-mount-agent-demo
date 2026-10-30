@@ -9,13 +9,14 @@ from temporalio import workflow
 
 with workflow.unsafe.imports_passed_through():
     from agents import Agent as OpenAIAgent
-    from agents import ModelSettings, Runner, TResponseInputItem
+    from agents import ModelResponse, ModelSettings, RunContextWrapper, RunHooks, Runner, TResponseInputItem
     from openai.types.shared import Reasoning
 
     from temporal_agent_harness.ai_sdks.openai_agents_harness import as_openai_agent_tool
     from temporal_agent_harness.harness.agent_protocol.events import (
         ModelInteractionEnded,
         ModelInteractionStarted,
+        ThoughtSummaryDelta,
         TokenUsage,
     )
     from temporal_agent_harness.harness.agent_workflow import AgentWorkflowRunner
@@ -53,7 +54,9 @@ async def run_model_turn(
         tools=[_adapt(runner, spec) for spec in tools],
         model_settings=ModelSettings(
             parallel_tool_calls=True,
-            reasoning=Reasoning(effort=REASONING_EFFORT) if REASONING_EFFORT else None,
+            # "auto" summaries feed the console's thought cards; at low effort the model often
+            # reasons too briefly to produce one.
+            reasoning=Reasoning(effort=REASONING_EFFORT or None, summary="auto"),
         ),
     )
     if STREAM_MODEL_CALLS:
@@ -62,17 +65,31 @@ async def run_model_turn(
             pass
     else:
         # DEMO_STREAM_MODE=off/minimal: one plain model activity per call, no text deltas streamed.
-        result = await Runner.run(sdk_agent, input=conversation, context=runner, max_turns=max_turns)
-        _publish_usage(runner, [r.usage for r in result.raw_responses])
+        result = await Runner.run(sdk_agent, input=conversation, context=runner, max_turns=max_turns,
+                                  hooks=_ModelCallEvents(runner))
     return str(result.final_output), result.to_input_list()
 
 
-def _publish_usage(runner: AgentWorkflowRunner, usages: list[Any]) -> None:
-    """Without streaming, nothing reports token usage, so the console's Tokens pane stays empty.
-    Publish one started/ended pair per model call, after the turn, carrying just the usage."""
-    for usage in usages:
-        runner.publish(ModelInteractionStarted(model=MODEL))
-        runner.publish(ModelInteractionEnded(model=MODEL, usage=TokenUsage(
+class _ModelCallEvents(RunHooks):
+    """Without streaming, nothing tells the console about model calls, so its Tokens pane and
+    thought cards stay empty. Publish each call's start and end as it happens (so durations are
+    real), with its token usage and reasoning summary, and nothing per token."""
+
+    def __init__(self, runner: AgentWorkflowRunner) -> None:
+        self._runner = runner
+
+    async def on_llm_start(self, context: RunContextWrapper, agent: OpenAIAgent,
+                           system_prompt: str | None, input_items: list[TResponseInputItem]) -> None:
+        self._runner.publish(ModelInteractionStarted(model=MODEL))
+
+    async def on_llm_end(self, context: RunContextWrapper, agent: OpenAIAgent,
+                         response: ModelResponse) -> None:
+        for item in response.output:
+            summary = "\n\n".join(s.text for s in getattr(item, "summary", None) or [])
+            if getattr(item, "type", None) == "reasoning" and summary:
+                self._runner.publish(ThoughtSummaryDelta(delta={"delta": summary}))
+        usage = response.usage
+        self._runner.publish(ModelInteractionEnded(model=MODEL, usage=TokenUsage(
             input_tokens=usage.input_tokens,
             output_tokens=usage.output_tokens,
             total_tokens=usage.total_tokens,
