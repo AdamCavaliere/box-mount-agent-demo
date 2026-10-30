@@ -194,9 +194,11 @@ booth-reset:
     docker exec -u boxsvc sandbox-booth-coordinator /app/.venv/bin/python /app/scripts/box_admin.py reset --booth
     # Put the contract and the original playbook back, so add-on A (editing the playbook) starts fresh.
     uv run -q --group seed python scripts/make_seed.py >/dev/null
+    since=$(date -u +%Y-%m-%dT%H:%M:%SZ)
     docker exec -u boxsvc sandbox-booth-coordinator /app/.venv/bin/python /app/scripts/box_admin.py seed --booth
-    # Start the agents' sandboxes fresh and check they get the restored playbook from Box BEFORE
-    # wiping the coordinator: until its upload lands (a Box lock blocks it), that is the only copy.
+    # Until the coordinator's upload lands, its copy is the only one: start the agents' sandboxes
+    # only after it does (so they download the restored playbook), and wipe the coordinator last.
+    just _wait-playbook-upload "$since"
     just booth-up
     just _wait-sandboxes
     just _verify-playbook
@@ -210,6 +212,24 @@ booth-playbook-reset:
     uv run -q --group seed python scripts/make_seed.py >/dev/null
     docker exec -u boxsvc sandbox-booth-coordinator /app/.venv/bin/python /app/scripts/box_admin.py seed --booth
     just _verify-playbook
+
+# Wait for the coordinator's Box Mount to finish uploading Playbook/playbook.md after `since`, or
+# fail if Box refuses it (locked). Returns at once if the seed found the playbook unchanged.
+_wait-playbook-upload since:
+    #!/usr/bin/env bash
+    for i in $(seq 1 60); do
+      log=$(docker logs --since "{{since}}" sandbox-booth-coordinator 2>&1)
+      id=$(grep -o "update_file.start: box_id='[0-9]*', local_path='/mnt/box/Playbook/playbook.md'" <<<"$log" | tail -1 | grep -o "[0-9]\{6,\}")
+      if [ -n "$id" ] && grep -q "update_file.complete: box_id='$id'" <<<"$log"; then echo "playbook uploaded to Box"; exit 0; fi
+      if grep -q "playbook.md.*item locked" <<<"$log"; then
+        echo "Box refused the upload: Playbook/playbook.md is LOCKED in Box."
+        echo "Unlock it in the Box web UI (… > Unlock, or close it in the editor), then rerun this reset."
+        exit 1
+      fi
+      if [ -z "$id" ] && [ $i -ge 10 ]; then echo "no playbook upload needed (Box already had it)"; exit 0; fi
+      sleep 2
+    done
+    echo "playbook upload to Box did not finish in 2 min"; exit 1
 
 # Wait until the agents' sandboxes have the seed playbook from Box. Box refuses uploads to a
 # locked file (e.g. left open in Box Edit after add-on A), and the local copy alone proves nothing.
