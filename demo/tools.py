@@ -24,6 +24,7 @@ from temporalio.exceptions import ApplicationError
 from temporalio.workflow import ActivityConfig
 
 from temporal_agent_harness.harness import agent
+from temporal_agent_harness.harness.agent import Injected
 
 from .quiet_tools import quiet_activity_tool
 
@@ -393,9 +394,12 @@ async def box_link(path: str) -> BoxLink:
 
 
 @quiet_activity_tool(name="publish_memo_to_reviewed_folder", inherently_safe=False, activity_config=QUICK)
-async def publish_memo(case_id: str, memo_path: str, memo_link: str, summary: str) -> PublishResult:
-    """Publish a review memo to Legal: copy it from Work/ to Reviewed/ in Box. Open `memo_link` to
-    read the memo before approving. Requires human approval."""
+async def publish_memo(message: str, memo_path: Injected[str]) -> PublishResult:
+    """Publish a review memo to Legal: copy it from Work/ to Reviewed/ in Box. Requires human approval.
+
+    `message` is what the approver reads: markdown with a link to the memo in Box. It is the only
+    argument the approval card shows (memo_path is injected), and the console renders a lone
+    `message` as markdown, so the link is clickable there."""
     src = MOUNT_ROOT / _relative(memo_path)
     if not src.is_file():  # e.g. removed by a reset: retrying can't bring it back
         raise ApplicationError(f"{memo_path} is no longer in Box, so there is nothing to publish",

@@ -147,9 +147,13 @@ class BoxRelayAgentWorkflow:
         )))
         _status(f"{CASE_ID} · waiting for a person to approve publishing {memo.path} ({link.url})")
         try:
+            message = (f"**Publish the {CASE_ID} review to Legal?**\n\n"
+                       f"[Open {memo.path.rsplit('/', 1)[-1]} in Box]({link.url}) to read it first. "
+                       f"Approving copies it to Reviewed/ in Box.")
+            if summary:
+                message += f"\n\n> {summary}"
             published = await self._runner.run_tool(
-                _call_id(), publish_memo,
-                case_id=CASE_ID, memo_path=memo.path, memo_link=link.url, summary=summary,
+                _call_id(), publish_memo, message=message, injections={"memo_path": memo.path},
             )
         except ActivityError as err:
             reason = getattr(err.cause, "message", None) or str(err.cause or err)
