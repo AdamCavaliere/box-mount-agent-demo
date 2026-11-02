@@ -8,3 +8,5 @@ __pycache__/
 .venv/
 .temporal/
 seed/
+# booth-launch's Ghostty window ID, for booth-stop.
+.booth-window

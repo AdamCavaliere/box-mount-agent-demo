@@ -270,14 +270,17 @@ booth-down:
 # session manager, sandboxes, booth UI, ticker), started in the right order, then the browser
 # pages. `just booth-launch dry` opens the tabs but only echoes the commands.
 booth-launch mode="":
-    osascript scripts/booth-ghostty.applescript "{{justfile_directory()}}" {{mode}}
+    @osascript scripts/booth-ghostty.applescript "{{justfile_directory()}}" {{mode}} > .booth-window
+    @echo "opened the booth window (Ghostty window $(cat .booth-window))"
 
-# Stop everything booth-launch started (the tabs stay open at a prompt) and the booth sandboxes.
+# Stop everything booth-launch started and the booth sandboxes, then close booth-launch's window.
+# The close runs a second after this recipe exits, so it also works when run from one of those tabs.
 booth-stop:
     -pkill -f "scripts/ticker.py"
     -pkill -f "harness_cli.py"
     -pkill -f "temporal server start-dev --ip 0.0.0.0"
     docker compose --profile booth down
+    -@[ -s .booth-window ] && id=$(cat .booth-window) && rm -f .booth-window && nohup sh -c "sleep 1; osascript -e 'tell application \"Ghostty\" to close window (window id \"$id\")'" >/dev/null 2>&1 &
 
 # Helpers for booth-launch: wait for Temporal, for the sandboxes, and open the pages once the UI is up.
 _wait-temporal:

@@ -2,6 +2,7 @@
 --   osascript scripts/booth-ghostty.applescript <project dir> [dry]
 -- Each tab is an ordinary shell with its command typed in, so Ctrl-C stops the process and
 -- leaves the tab usable. "dry" types an echo of each command instead of running it.
+-- Returns the window's ID, which booth-launch saves so booth-stop can close the window.
 on run argv
 	set projectDir to item 1 of argv
 	set dryRun to (count of argv) > 1 and item 2 of argv is "dry"
@@ -30,6 +31,6 @@ on run argv
 			perform action ("set_tab_title:" & (item 1 of spec)) on focused terminal of t
 		end repeat
 		select tab (tab 1 of w)
-		return "opened " & (count of tabs of w) & " tabs in window " & (id of w)
+		return id of w
 	end tell
 end run
