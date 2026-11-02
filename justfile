@@ -280,7 +280,7 @@ booth-stop:
     -pkill -f "harness_cli.py"
     -pkill -f "temporal server start-dev --ip 0.0.0.0"
     docker compose --profile booth down
-    -@[ -s .booth-window ] && id=$(cat .booth-window) && rm -f .booth-window && nohup sh -c "sleep 1; osascript -e 'tell application \"Ghostty\" to close window (window id \"$id\")'" >/dev/null 2>&1 &
+    -@id=$(cat .booth-window 2>/dev/null); rm -f .booth-window; nohup sh -c "sleep 1; osascript scripts/booth-ghostty-close.applescript '$id'" >/dev/null 2>&1 &
 
 # Helpers for booth-launch: wait for Temporal, for the sandboxes, and open the pages once the UI is up.
 _wait-temporal:
