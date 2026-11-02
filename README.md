@@ -126,6 +126,13 @@ and eight playbook violations in the MSA. Expected outcome: **AP hold, contract 
 Between rehearsals: `just reset` (about a minute; see below). Other recipes: `just tree <sandbox>`,
 `just reload` (restart workers after editing `demo/*.py`), `just flaky off`.
 
+**Where the agents work.** Each booth sandbox's Box Mount maps the `Booth/` folder to `/mnt/box`,
+and the agents' scripts see it as `/box/…` (the full demo's sandboxes mount the parent demo folder
+at the same path). So an agent never knows which Box folder it is in: it can't see or touch
+anything outside `Booth/` (least privilege), the same agent code runs against any mounted folder
+(the folder is a deployment setting, `BOOTH_BOX_FOLDER_ID`), and Box permissions on that folder
+govern what it can do, with no Box credentials in the agent.
+
 ## Booth demo: Box Relay (~60 s, plus two optional add-ons)
 
 A short version for a booth: an **Extractor** and a **Contract reviewer**, each in its own sandbox,
