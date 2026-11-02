@@ -11,12 +11,15 @@ The relay itself is a plain workflow, not a model: it runs the two agents in ord
 along only fingerprints of the files, so each agent waits until that exact version has synced
 into its own sandbox. Type "go" to run it. Afterwards, edit Playbook/playbook.md in Box and type
 "re-review": the relay waits for the edit to sync, and the Reviewer writes review_memo_v2.md.
+Anything else is a question: a model answers it from the files in Box (contract, playbook,
+extraction and memo), without starting a run.
 """
 
 # No `from __future__ import annotations`: the harness reads tool and handler annotations
 # concretely, and stringized ones fail to resolve.
 
 import asyncio
+import re
 
 from temporalio import workflow
 from temporalio.exceptions import ActivityError
@@ -36,7 +39,8 @@ with workflow.unsafe.imports_passed_through():
 
     from ..config import QUEUES, WORKFLOW_TYPES
     from ..handoff import await_change, fingerprint
-    from ..tools import box_link, publish_memo
+    from ..tools import box_link, ocr_document, publish_memo, read_box_text
+    from .common import run_model_turn
     from .idle import close_when_idle
     from ..models import Case, CaseAssignment, CaseBoard, CaseResult, CaseStep, CaseTask, FileRef
 
@@ -46,6 +50,21 @@ PLAYBOOK = "Playbook/playbook.md"
 FOCUS = ("Booth review: cover only payment terms, renewal, limitation of liability, "
          "indemnification and termination, and keep the memo short. If a clause complies with the "
          "playbook as it stands now, mark it OK with no redline rather than listing it as a finding.")
+
+
+GO = re.compile(r"^(go|run|start)\b")
+RE_REVIEW = re.compile(r"\bre-?review\b|\breview (it )?again\b")
+
+ANSWER = f"""\
+You answer questions at a booth demo of Box Relay, where two agents in separate Linux sandboxes \
+review a supplier contract by handing files to each other through a shared Box folder (Box Mount \
+syncs it into each sandbox): the Extractor turns the contract into extraction.json, the Reviewer \
+checks it against the playbook and writes a review memo, and a person approves publishing the memo \
+to Reviewed/. Answer from the files, not from memory: read them with the tools (paths relative to \
+the Box folder; the contract is a PDF, so use read_pdf_text_from_box for it). If a file another \
+sandbox just wrote isn't there yet, it is still syncing; say so. Be brief and concrete, quote the \
+contract or playbook where it helps, and use Markdown. You can't change anything. To run the \
+review, the visitor types "go"; after editing {PLAYBOOK} in Box, "re-review"."""
 
 
 def _call_id() -> str:
@@ -76,6 +95,9 @@ class BoxRelayAgentWorkflow:
         self._playbook: FileRef | None = None
         self._extraction: FileRef | None = None
         self._reviews = 0
+        self._memo = ""
+        self._published = ""
+        self._chat: list = []
         self._turns = 0
         self._busy = False
 
@@ -90,14 +112,17 @@ class BoxRelayAgentWorkflow:
     @agent.accepts(mid_turn=MidTurn.REJECT)
     async def ask(self, message: TextMessage) -> TextReply:
         """Type "go" to run the relay (Extractor, then Reviewer, handing files through Box). After a
-        run, edit Playbook/playbook.md in Box and type "re-review"."""
+        run, edit Playbook/playbook.md in Box and type "re-review". Ask anything else about the
+        contract or the review."""
         self._turns += 1
         self._busy = True
         try:
             text = message.text.strip().lower()
-            if "review" in text and self._extraction is not None:
+            if GO.match(text):
+                return TextReply(text=await self._relay())
+            if RE_REVIEW.search(text) and self._extraction is not None:
                 return TextReply(text=await self._re_review())
-            return TextReply(text=await self._relay())
+            return TextReply(text=await self._answer(message.text))
         finally:
             self._busy = False
 
@@ -124,9 +149,32 @@ class BoxRelayAgentWorkflow:
         reviewed = await self._review("")
         return _report("Relay complete.", [extracted, reviewed]) + await self._publish(reviewed)
 
+    async def _answer(self, question: str) -> str:
+        """A question, not a command: a model answers it from the files in Box, read in this sandbox."""
+        _status(f"{CASE_ID} · answering a question from the files in Box")
+        files = [f"- contract: {CONTRACT}", f"- playbook: {PLAYBOOK}"]
+        if self._extraction is not None:
+            files.append(f"- extraction (by the Extractor): {self._extraction.path}")
+        if self._memo:
+            files.append(f"- latest review memo (by the Reviewer): {self._memo}")
+        if self._published:
+            files.append(f"- published memo: {self._published}")
+        if self._extraction is None:
+            files.append("No review has run yet in this session.")
+        self._chat.append({"role": "user", "content": "Files in Box:\n" + "\n".join(files) + f"\n\n{question}"})
+        reply, self._chat = await run_model_turn(
+            self._runner, name="Box Relay", instructions=ANSWER,
+            tools=[read_box_text, ocr_document], conversation=self._chat, max_turns=10,
+        )
+        _status(f"{CASE_ID} · answered a question · type go for a new run")
+        return reply
+
     async def _re_review(self) -> str:
         # Waits (durably, retrying) until a person's edit to the playbook has synced into this sandbox.
         _status(f"{CASE_ID} · waiting for someone to edit Playbook/playbook.md in Box")
+        self._runner.publish(ReplyDelta(text=(
+            f"Waiting for an edit to {PLAYBOOK} in Box. The Reviewer starts as soon as it syncs.\n\n"
+        )))
         self._playbook = await self._runner.run_tool(
             _call_id(), await_change, path=PLAYBOOK, previous_sha256=self._playbook.sha256
         )
@@ -138,6 +186,7 @@ class BoxRelayAgentWorkflow:
     async def _publish(self, reviewed: CaseResult) -> str:
         """The human-in-the-loop step: link the memo in Box, and publish it only if a person approves."""
         memo = reviewed.outputs[0]
+        self._memo, self._published = memo.path, ""
         link = await self._runner.run_tool(_call_id(), box_link, path=memo.path)
         summary = reviewed.summary.strip().splitlines()[0][:300] if reviewed.summary.strip() else ""
         # Shown in the chat now, while the approval waits, so the approver can open the memo first.
@@ -162,6 +211,7 @@ class BoxRelayAgentWorkflow:
         except ToolApprovalDenied:
             _status(f"{CASE_ID} · publishing rejected; memo stays in Work/")
             return f"\n\n**Not published.** [Open the memo in Box]({link.url}); it stays in Work/ for revision."
+        self._published = published.published_path
         published_link = await self._runner.run_tool(_call_id(), box_link, path=published.published_path)
         _status(f"{CASE_ID} · published to {published.published_path} · type go for a new run")
         return (f"\n\n**Published to Legal.** [Open the published memo in Box]({published_link.url})"
