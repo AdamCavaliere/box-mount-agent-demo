@@ -23,7 +23,7 @@ with workflow.unsafe.imports_passed_through():
     from temporal_agent_harness.harness.agent_workflow import AgentWorkflowRunner
 
     from ..config import MODEL, REASONING_EFFORT
-    from ..quiet_streams import STREAM_MODEL_CALLS
+    from ..stream_settings import STREAM_MODEL_CALLS
     from ..handoff import await_handoff, fingerprint
     from ..models import CaseResult, CaseTask
 

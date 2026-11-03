@@ -68,7 +68,7 @@ Only one Temporal dev server can listen on 7233: stop any other local dev server
 ### Keeping the Temporal UI readable
 
 `DEMO_STREAM_MODE` in `.env.local` (and `BOOTH_STREAM_MODE` for the booth, default `minimal`) sets how much of the Harness's live stream lands in workflow
-history (`demo/quiet_streams.py`). Measured on the Compliance agent's history for one case:
+history (`demo/stream_settings.py`). Measured on the Compliance agent's history for one case:
 
 | Mode | Total events | Stream signals | Stream polls | UI feel |
 |---|---|---|---|---|

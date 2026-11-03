@@ -32,7 +32,7 @@ from .agents.specialists import (
 )
 from .boxfs import BoxMountFS
 from .config import QUEUES
-from .quiet_streams import MODE, MODEL_FLUSH, install as install_quiet_streams
+from .stream_settings import MODE, MODEL_FLUSH, install as install_stream_settings
 from .handoff import await_change, await_handoff, fingerprint
 from .sandbox import sandbox_name
 from .tools import (
@@ -64,7 +64,7 @@ async def main() -> None:
     if not os.environ.get("OPENAI_API_KEY"):
         sys.exit("error: OPENAI_API_KEY is not set (put it in .env.local)")
     workflow_cls, _ = ROLES[role]
-    install_quiet_streams()
+    install_stream_settings()
 
     openai_plugin = OpenAIAgentsPlugin(
         model_params=ModelActivityParameters(
@@ -73,7 +73,7 @@ async def main() -> None:
             # sandbox restarts the worker (the harness heartbeats every timeout/2 in the background).
             heartbeat_timeout=timedelta(seconds=5),
             stream_to_provider=stream_to_provider,
-            # Each flush is a Signal into the agent workflow (see quiet_streams).
+            # Each flush is a Signal into the agent workflow (see stream_settings).
             streaming_batch_interval=MODEL_FLUSH,
         ),
         observer_factory=harness_observer_factory,

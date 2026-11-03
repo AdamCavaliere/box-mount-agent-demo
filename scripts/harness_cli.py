@@ -1,6 +1,6 @@
 """`temporal-agent-harness` (serve, session-manager) with the demo's settings applied:
 
-- quiet stream mode (see demo/quiet_streams.py);
+- the stream mode, DEMO_STREAM_MODE (see demo/stream_settings.py);
 - a separate session-manager per UI when DEMO_SESSION_MANAGER_ID is set (the booth UI uses
   `booth-session-manager`): the manager keeps the agent list it started with, so the booth UI
   needs its own to offer only Box Relay;
@@ -22,7 +22,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
-from demo.quiet_streams import MODE, install  # noqa: E402
+from demo.stream_settings import MODE, install  # noqa: E402
 
 install()
 print(f"stream mode: {MODE}", file=sys.stderr)
