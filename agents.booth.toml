@@ -4,7 +4,7 @@
 [[agents]]
 key = "contract-review"
 workflow_type = "BoxRelayAgent"
-agent = "demo.agents.relay:BoxRelayAgentWorkflow"
+agent = "demo.agents.relay_workflow:BoxRelayAgentWorkflow"
 task_queue = "booth-coordinator"
 label = "Box Relay (booth)"
 description = """

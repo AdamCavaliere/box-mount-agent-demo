@@ -39,8 +39,8 @@ with workflow.unsafe.imports_passed_through():
     from ..config import BOX_MOUNT_DESCRIPTION, FS_TOOLS, QUEUES, WORKFLOW_TYPES
     from ..models import Case, CaseAssignment, CaseBoard, CaseResult, CaseStep, CaseTask, FileRef
     from ..scripthelpers import SCRIPT_HELPERS
-    from ..handoff import fingerprint
-    from ..tools import route_contract, sandbox_info, submit_ap_decision
+    from ..handoff_activities import fingerprint
+    from ..activities import route_contract, sandbox_info, submit_ap_decision
     from .common import run_model_turn
     from .idle import close_when_idle
 

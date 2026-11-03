@@ -28,7 +28,7 @@ from temporal_agent_harness.harness.agent import Injected
 
 
 from . import fixtures
-from .handoff import _relative
+from .handoff_activities import _relative
 from .models import SandboxInfo
 from .sandbox import MOUNT_ROOT, machine, mount_status, sandbox_name
 

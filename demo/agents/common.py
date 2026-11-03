@@ -24,7 +24,7 @@ with workflow.unsafe.imports_passed_through():
 
     from ..config import MODEL, REASONING_EFFORT
     from ..stream_settings import STREAM_MODEL_CALLS
-    from ..handoff import await_handoff, fingerprint
+    from ..handoff_activities import await_handoff, fingerprint
     from ..models import CaseResult, CaseTask
 
 Tool = Callable[..., Awaitable[Any]]

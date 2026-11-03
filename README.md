@@ -31,7 +31,7 @@ the document tools really open the PDFs in that sandbox's mount.
   `/mnt/box`. Every `open()` in an agent's Code Mode script becomes an activity
   (`vfs.box-mount.read`, `.write`, ...) that runs on that agent's task queue, so in its sandbox.
   Each agent may write only its own output file, and writes pause while Box Mount isn't syncing.
-- **Handoffs by fingerprint** (`demo/handoff.py`). The coordinator passes only a `FileRef`
+- **Handoffs by fingerprint** (`demo/handoff_activities.py`). The coordinator passes only a `FileRef`
   (path, sha256, which sandbox wrote it). The next agent's first step, `wait_for_file_to_sync_from_box`, waits
   until that exact version has synced into *its* sandbox, retrying durably. Source PDFs and the
   playbook are handed off the same way.

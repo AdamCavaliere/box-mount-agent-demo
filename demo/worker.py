@@ -23,9 +23,9 @@ from temporal_agent_harness.ai_sdks.openai_agents import ModelActivityParameters
 from temporal_agent_harness.ai_sdks.openai_agents_harness import harness_observer_factory, stream_to_provider
 from temporal_agent_harness.plugin import AgentHarnessPlugin
 
-from .agents.coordinator import CoordinatorAgentWorkflow
-from .agents.relay import BoxRelayAgentWorkflow
-from .agents.specialists import (
+from .agents.coordinator_workflow import CoordinatorAgentWorkflow
+from .agents.relay_workflow import BoxRelayAgentWorkflow
+from .agents.specialist_workflows import (
     ComplianceAgentWorkflow,
     ContractReviewerAgentWorkflow,
     ExtractorAgentWorkflow,
@@ -33,9 +33,9 @@ from .agents.specialists import (
 from .boxfs import BoxMountFS
 from .config import QUEUES
 from .stream_settings import MODE, MODEL_FLUSH, install as install_stream_settings
-from .handoff import await_change, await_handoff, fingerprint
+from .handoff_activities import await_change, await_handoff, fingerprint
 from .sandbox import sandbox_name
-from .tools import (
+from .activities import (
     BOOTH_TOOLS,
     COMPLIANCE_TOOLS,
     COORDINATOR_TOOLS,

@@ -38,8 +38,8 @@ with workflow.unsafe.imports_passed_through():
     from temporal_agent_harness.harness.agent_workflow import AgentWorkflowRunner, ToolApprovalDenied
 
     from ..config import QUEUES, WORKFLOW_TYPES
-    from ..handoff import await_change, fingerprint
-    from ..tools import box_link, ocr_document, publish_memo, read_box_text
+    from ..handoff_activities import await_change, fingerprint
+    from ..activities import box_link, ocr_document, publish_memo, read_box_text
     from .common import run_model_turn
     from .idle import close_when_idle
     from ..models import Case, CaseAssignment, CaseBoard, CaseResult, CaseStep, CaseTask, FileRef

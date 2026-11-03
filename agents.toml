@@ -4,7 +4,7 @@
 [[agents]]
 key = "vendor-intake"
 workflow_type = "CaseCoordinatorAgent"
-agent = "demo.agents.coordinator:CoordinatorAgentWorkflow"
+agent = "demo.agents.coordinator_workflow:CoordinatorAgentWorkflow"
 task_queue = "box-coordinator"
 label = "Vendor Packet Intake (Box Mount)"
 description = """
@@ -16,7 +16,7 @@ pane for the case board."""
 [[agents]]
 key = "contract-review"
 workflow_type = "BoxRelayAgent"
-agent = "demo.agents.relay:BoxRelayAgentWorkflow"
+agent = "demo.agents.relay_workflow:BoxRelayAgentWorkflow"
 task_queue = "booth-coordinator"
 label = "Box Relay (booth)"
 description = """

@@ -5,7 +5,7 @@ An ``ActivityFileSystem``, so the harness runs every method as an activity
 queue, which is the sandbox that agent lives in. A script's ``open("/box/Incoming/x.pdf")``
 therefore reads the file Box Mount synced into *that* sandbox, and a write lands in its mount
 and is uploaded to Box by its daemon. Agents in other sandboxes see it once their own daemon
-syncs it down (see ``handoff.await_handoff``).
+syncs it down (see ``handoff_activities.await_handoff``).
 
 Governance on top of Box's own permissions:
 

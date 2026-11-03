@@ -24,7 +24,7 @@ with workflow.unsafe.imports_passed_through():
     from ..config import BOX_MOUNT_DESCRIPTION, WORKFLOW_TYPES
     from ..models import CaseAssignment, CaseResult, CaseTask
     from ..scripthelpers import SCRIPT_HELPERS
-    from ..tools import COMPLIANCE_TOOLS, EXTRACTOR_TOOLS, REVIEWER_TOOLS, ocr_document, read_box_text, sandbox_info
+    from ..activities import COMPLIANCE_TOOLS, EXTRACTOR_TOOLS, REVIEWER_TOOLS, ocr_document, read_box_text, sandbox_info
     from .common import run_specialist
 
 COMMON = """\
