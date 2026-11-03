@@ -26,7 +26,6 @@ from temporalio.workflow import ActivityConfig
 
 from temporal_agent_harness.harness import agent
 
-from .quiet_tools import quiet_activity_tool
 
 from .models import FileRef, HandoffReceipt
 from .sandbox import MOUNT_ROOT, mount_status, sandbox_name
@@ -61,7 +60,7 @@ def _pulse() -> None:
         activity.logger.warning("could not request a sync pulse: %s", err)
 
 
-@quiet_activity_tool(name="record_file_version_for_handoff", inherently_safe=True,
+@agent.activity_tool_defn(name="record_file_version_for_handoff", inherently_safe=True,
                            activity_config=ActivityConfig(start_to_close_timeout=timedelta(seconds=15)))
 async def fingerprint(path: str) -> FileRef:
     """Fingerprint a file this agent wrote, so the next agent can wait for exactly this version."""
@@ -70,7 +69,7 @@ async def fingerprint(path: str) -> FileRef:
     return FileRef(path=rel, sha256=hashlib.sha256(data).hexdigest(), size=len(data), written_in=sandbox_name())
 
 
-@quiet_activity_tool(name="wait_for_file_to_sync_from_box", inherently_safe=True, activity_config=HANDOFF_ACTIVITY)
+@agent.activity_tool_defn(name="wait_for_file_to_sync_from_box", inherently_safe=True, activity_config=HANDOFF_ACTIVITY)
 async def await_handoff(ref: FileRef) -> HandoffReceipt:
     """Wait until another agent's output has synced into this sandbox through Box Mount."""
     attempt = activity.info().attempt
@@ -94,7 +93,7 @@ async def await_handoff(ref: FileRef) -> HandoffReceipt:
     )
 
 
-@quiet_activity_tool(name="wait_for_edit_in_box", inherently_safe=True, activity_config=HANDOFF_ACTIVITY)
+@agent.activity_tool_defn(name="wait_for_edit_in_box", inherently_safe=True, activity_config=HANDOFF_ACTIVITY)
 async def await_change(path: str, previous_sha256: str) -> FileRef:
     """Wait until a file in this sandbox's Box Mount differs from a version already seen, e.g. a
     person's edit in the Box web app syncing down. Returns the new version's fingerprint."""

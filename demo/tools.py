@@ -26,7 +26,6 @@ from temporalio.workflow import ActivityConfig
 from temporal_agent_harness.harness import agent
 from temporal_agent_harness.harness.agent import Injected
 
-from .quiet_tools import quiet_activity_tool
 
 from . import fixtures
 from .handoff import _relative
@@ -59,7 +58,7 @@ def _pdf_text(path: str) -> str:
 
 # -- every agent ---------------------------------------------------------------------------
 
-@quiet_activity_tool(name="check_sandbox_and_box_mount", inherently_safe=True, activity_config=QUICK)
+@agent.activity_tool_defn(name="check_sandbox_and_box_mount", inherently_safe=True, activity_config=QUICK)
 async def sandbox_info() -> SandboxInfo:
     """Report which sandbox this agent is running in and the state of its Box Mount."""
     healthy, status = mount_status()
@@ -115,7 +114,7 @@ class InvoiceFields(BaseModel):
     sandbox: str
 
 
-@quiet_activity_tool(name="read_pdf_text_from_box", inherently_safe=True, activity_config=QUICK)
+@agent.activity_tool_defn(name="read_pdf_text_from_box", inherently_safe=True, activity_config=QUICK)
 async def ocr_document(path: str) -> DocumentText:
     """Extract the text of a PDF in the Box folder (path relative to the folder, e.g. 'Incoming/x.pdf')."""
     await _latency(1.0, 2.5)
@@ -124,7 +123,7 @@ async def ocr_document(path: str) -> DocumentText:
     return DocumentText(path=rel, pages=len(PdfReader(MOUNT_ROOT / rel).pages), text=text, sandbox=sandbox_name())
 
 
-@quiet_activity_tool(name="classify_document_type", inherently_safe=True, activity_config=QUICK)
+@agent.activity_tool_defn(name="classify_document_type", inherently_safe=True, activity_config=QUICK)
 async def classify_document(path: str) -> DocumentClass:
     """Classify a document in the Box folder (invoice, contract, purchase order, other)."""
     await _latency()
@@ -144,7 +143,7 @@ def _money(s: str) -> float:
     return float(s.replace("$", "").replace(",", ""))
 
 
-@quiet_activity_tool(name="extract_invoice_fields_from_pdf", inherently_safe=True, activity_config=QUICK)
+@agent.activity_tool_defn(name="extract_invoice_fields_from_pdf", inherently_safe=True, activity_config=QUICK)
 async def extract_invoice_fields(path: str) -> InvoiceFields:
     """Extract structured fields (header, remit-to, line items, totals) from an invoice PDF."""
     await _latency(1.0, 2.0)
@@ -214,7 +213,7 @@ class SanctionsResult(BaseModel):
     sandbox: str
 
 
-@quiet_activity_tool(name="erp_lookup_vendor_record", inherently_safe=True, activity_config=SYSTEM_CALL)
+@agent.activity_tool_defn(name="erp_lookup_vendor_record", inherently_safe=True, activity_config=SYSTEM_CALL)
 async def lookup_vendor_master(tax_id: str) -> VendorRecord:
     """Look up a vendor in the ERP vendor master by tax ID (e.g. '84-3920175')."""
     attempt = activity.info().attempt
@@ -231,7 +230,7 @@ async def lookup_vendor_master(tax_id: str) -> VendorRecord:
                         bank_verified=rec["bank"]["verified"], sandbox=sandbox_name())
 
 
-@quiet_activity_tool(name="erp_match_invoice_to_purchase_order", inherently_safe=True, activity_config=SYSTEM_CALL)
+@agent.activity_tool_defn(name="erp_match_invoice_to_purchase_order", inherently_safe=True, activity_config=SYSTEM_CALL)
 async def match_purchase_order(po_number: str, invoice_total: float) -> POMatch:
     """Three-way match: compare an invoice total against its approved purchase order."""
     await _latency(1.0, 2.0)
@@ -252,7 +251,7 @@ async def match_purchase_order(po_number: str, invoice_total: float) -> POMatch:
                    approver=po["approver"], line_differences=diffs, sandbox=sandbox_name())
 
 
-@quiet_activity_tool(name="screen_vendor_against_sanctions_lists", inherently_safe=True, activity_config=SYSTEM_CALL)
+@agent.activity_tool_defn(name="screen_vendor_against_sanctions_lists", inherently_safe=True, activity_config=SYSTEM_CALL)
 async def sanctions_screen(name: str, country: str) -> SanctionsResult:
     """Screen a party against sanctions and denied-party lists (simulated)."""
     await _latency(0.8, 1.5)
@@ -268,7 +267,7 @@ class FileText(BaseModel):
     sandbox: str
 
 
-@quiet_activity_tool(name="read_handed_off_file_from_box", inherently_safe=True, activity_config=QUICK)
+@agent.activity_tool_defn(name="read_handed_off_file_from_box", inherently_safe=True, activity_config=QUICK)
 async def read_box_text(path: str) -> FileText:
     """Read a text file another agent handed off (e.g. extraction.json) from this sandbox's Box Mount."""
     rel = _relative(path)
@@ -296,7 +295,7 @@ class RiskScore(BaseModel):
     sandbox: str
 
 
-@quiet_activity_tool(name="get_approved_clause_language", inherently_safe=True, activity_config=SYSTEM_CALL)
+@agent.activity_tool_defn(name="get_approved_clause_language", inherently_safe=True, activity_config=SYSTEM_CALL)
 async def clause_library_lookup(clause_type: str) -> ClauseStandard:
     """Fetch approved fallback language for a clause type. Types: renewal, payment_terms,
     price_adjustment, limitation_of_liability, indemnification, termination, insurance, governing_law."""
@@ -308,7 +307,7 @@ async def clause_library_lookup(clause_type: str) -> ClauseStandard:
     return ClauseStandard(clause_type=key, approved_language=fixtures.CLAUSE_LIBRARY[key], sandbox=sandbox_name())
 
 
-@quiet_activity_tool(name="score_contract_risk", inherently_safe=True, activity_config=QUICK)
+@agent.activity_tool_defn(name="score_contract_risk", inherently_safe=True, activity_config=QUICK)
 async def score_risk(findings: list[RiskFinding]) -> RiskScore:
     """Score a contract's overall risk from its review findings."""
     await _latency(0.4, 0.9)
@@ -332,7 +331,7 @@ def _reference(prefix: str, *parts: str) -> str:
     return f"{prefix}-{hashlib.sha256('|'.join(parts).encode()).hexdigest()[:8].upper()}"
 
 
-@quiet_activity_tool(name="record_accounts_payable_decision", inherently_safe=False, activity_config=QUICK)
+@agent.activity_tool_defn(name="record_accounts_payable_decision", inherently_safe=False, activity_config=QUICK)
 async def submit_ap_decision(case_id: str, decision: str, reason: str) -> ActionConfirmation:
     """Record the accounts-payable decision for an invoice: 'approve', 'hold' or 'reject'.
     Requires human approval."""
@@ -341,7 +340,7 @@ async def submit_ap_decision(case_id: str, decision: str, reason: str) -> Action
                               detail=reason, sandbox=sandbox_name())
 
 
-@quiet_activity_tool(name="route_contract_to_legal_or_signature", inherently_safe=False, activity_config=QUICK)
+@agent.activity_tool_defn(name="route_contract_to_legal_or_signature", inherently_safe=False, activity_config=QUICK)
 async def route_contract(case_id: str, route: str, notes: str) -> ActionConfirmation:
     """Route the contract: 'legal_review' (with redlines) or 'signature'. Requires human approval."""
     await _latency()
@@ -377,7 +376,7 @@ LINK_ACTIVITY = ActivityConfig(
 )
 
 
-@quiet_activity_tool(name="get_box_web_link", inherently_safe=True, activity_config=LINK_ACTIVITY)
+@agent.activity_tool_defn(name="get_box_web_link", inherently_safe=True, activity_config=LINK_ACTIVITY)
 async def box_link(path: str) -> BoxLink:
     """Link to a file in the Box web app. Waits until Box Mount has synced the file and knows its
     Box ID (looked up by the file's inode in this sandbox; no Box credentials involved)."""
@@ -393,7 +392,7 @@ async def box_link(path: str) -> BoxLink:
     return BoxLink(path=rel, box_id=entry["box_id"], url=f"{BOX_WEB}/file/{entry['box_id']}", sandbox=sandbox_name())
 
 
-@quiet_activity_tool(name="publish_memo_to_reviewed_folder", inherently_safe=False, activity_config=QUICK)
+@agent.activity_tool_defn(name="publish_memo_to_reviewed_folder", inherently_safe=False, activity_config=QUICK)
 async def publish_memo(message: str, memo_path: Injected[str]) -> PublishResult:
     """Publish a review memo to Legal: copy it from Work/ to Reviewed/ in Box. Requires human approval.
 

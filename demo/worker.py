@@ -33,7 +33,6 @@ from .agents.specialists import (
 from .boxfs import BoxMountFS
 from .config import QUEUES
 from .quiet_streams import MODE, MODEL_FLUSH, install as install_quiet_streams
-from .quiet_tools import ACTIVITIES as TOOL_ACTIVITIES
 from .handoff import await_change, await_handoff, fingerprint
 from .sandbox import sandbox_name
 from .tools import (
@@ -89,8 +88,8 @@ async def main() -> None:
     connect = ClientConfig.load_client_connect_config()
     client = await Client.connect(**connect, plugins=[openai_plugin, harness_plugin])  # harness last
     task_queue = QUEUES["coordinator" if role == "relay" else role]
-    # Tool activities are plain Temporal activities (see quiet_tools), registered here.
-    worker = Worker(client, task_queue=task_queue, workflows=[workflow_cls], activities=TOOL_ACTIVITIES)
+    # The harness plugin registers each tool's activity (from tools=...) and the /box file activities.
+    worker = Worker(client, task_queue=task_queue, workflows=[workflow_cls])
     print(f"[{sandbox_name()}] {role} worker polling {task_queue} at {connect.get('target_host')}"
           f" (stream mode: {MODE})", flush=True)
     await worker.run()
