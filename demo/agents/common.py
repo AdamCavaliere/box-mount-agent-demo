@@ -6,6 +6,7 @@
 from typing import Any, Awaitable, Callable, Mapping
 
 from temporalio import workflow
+from temporalio.exceptions import ApplicationError
 
 with workflow.unsafe.imports_passed_through():
     from agents import Agent as OpenAIAgent
@@ -153,6 +154,13 @@ async def run_specialist(
         summary, conversation = await run_model_turn(
             runner, name=agent_name, instructions=instructions, tools=tools, conversation=conversation
         )
+        missing = [o for o in outputs if not await file_exists(o)]
+        if missing:
+            # Fail the step with the reason, rather than fingerprinting a file that isn't there.
+            status("failed: did not write " + ", ".join(missing))
+            raise ApplicationError(f"{agent_name} did not write {', '.join(missing)} "
+                                   f"(is Box Mount syncing? see `just status`). Its last reply: {summary[:300]}",
+                                   type="OutputNotWritten", non_retryable=True)
 
     refs = [await runner.run_tool(_call_id(), fingerprint, path=o) for o in outputs]
     status("done: wrote " + ", ".join(f"{r.path} ({r.sha256[:8]})" for r in refs))

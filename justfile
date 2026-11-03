@@ -38,6 +38,9 @@ up:
     mkdir -p /tmp/temporal-large-payloads
     docker compose --profile full up --no-start --build
     for s in {{sandboxes}}; do
+      # Only into a sandbox that hasn't started: docker cp makes the key yours (mode 600), and a
+      # running Box Mount daemon that reloads it then can't read it. The entrypoint fixes it at start.
+      [ "$(docker inspect -f '{{{{.State.Running}}' sandbox-$s)" = true ] && continue
       docker cp -q secrets/box-jwt-config.json sandbox-$s:/home/boxsvc/.box-mount/box-jwt-config.json
     done
     docker compose --profile full up -d
@@ -170,6 +173,9 @@ booth-up:
     mkdir -p /tmp/temporal-large-payloads
     docker compose --profile booth up --no-start --build
     for s in {{booth_sandboxes}}; do
+      # Only into a sandbox that hasn't started: docker cp makes the key yours (mode 600), and a
+      # running Box Mount daemon that reloads it then can't read it. The entrypoint fixes it at start.
+      [ "$(docker inspect -f '{{{{.State.Running}}' sandbox-$s)" = true ] && continue
       docker cp -q secrets/box-jwt-config.json sandbox-$s:/home/boxsvc/.box-mount/box-jwt-config.json
     done
     docker compose --profile booth up -d

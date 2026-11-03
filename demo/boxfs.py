@@ -11,8 +11,9 @@ Governance on top of Box's own permissions:
 
 - An agent may only write the paths its config allows (one writer per file, so Box never has
   to make conflict copies). Anything else is a ``PermissionError`` the script sees.
-- Writes refuse to run while the daemon isn't syncing. That error is retryable, so Temporal
-  retries it instead of letting the agent write into a folder nobody is uploading.
+- Writes refuse to run while the daemon isn't syncing, so an agent never writes into a folder
+  nobody is uploading. A write waits up to 15 s for the daemon, and the harness tries each file
+  operation 3 times, so a write rides out the sandbox supervisor remounting a stopped daemon.
 
 A config is untrusted input (the console's file viewer sends one back), so it can only narrow
 what an agent may do inside the mount, never point outside it.
@@ -20,6 +21,7 @@ what an agent may do inside the mount, never point outside it.
 
 from __future__ import annotations
 
+import asyncio
 import errno
 import hashlib
 import os
@@ -34,6 +36,8 @@ from .sandbox import MOUNT_ROOT, mount_status, sandbox_name
 
 # Plumbing folders in the Box folder that agents don't need to see.
 HIDDEN = frozenset({"_sync", "_latency"})
+# How long one write waits for a stopped daemon (the activity's timeout is 20 s).
+SYNC_WAIT_S = 15
 
 
 class BoxMountConfig(BaseModel):
@@ -73,10 +77,15 @@ class BoxMountFS(agent.ActivityFileSystem[BoxMountConfig], name="box-mount"):
                 errno.EACCES, f"This agent may only write: {allowed}", str(path)
             )
 
-    def _require_sync(self) -> None:
+    async def _require_sync(self) -> None:
         healthy, detail = mount_status()
+        for _ in range(SYNC_WAIT_S):
+            if healthy:
+                return
+            await asyncio.sleep(1)
+            healthy, detail = mount_status()
         if not healthy:
-            # Not an OSError, so it's retryable: Temporal retries until the daemon is back.
+            # Not an OSError, so it's retryable: the harness tries the operation again.
             raise RuntimeError(f"Box Mount is not syncing in {sandbox_name()}: {detail}")
 
     # -- reads -----------------------------------------------------------------------------
@@ -102,7 +111,7 @@ class BoxMountFS(agent.ActivityFileSystem[BoxMountConfig], name="box-mount"):
 
     async def write(self, path: PurePosixPath, data: bytes) -> None:
         self._check_writable(path)
-        self._require_sync()
+        await self._require_sync()
         target = self._on_disk(path)
         target.parent.mkdir(parents=True, exist_ok=True)
         if target.is_file() and hashlib.sha256(target.read_bytes()).digest() == hashlib.sha256(data).digest():
@@ -127,12 +136,12 @@ class BoxMountFS(agent.ActivityFileSystem[BoxMountConfig], name="box-mount"):
 
     async def delete(self, path: PurePosixPath) -> None:
         self._check_writable(path)
-        self._require_sync()
+        await self._require_sync()
         target = self._on_disk(path)
         target.rmdir() if target.is_dir() else target.unlink()
 
     async def rename(self, path: PurePosixPath, target: PurePosixPath) -> None:
         self._check_writable(path)
         self._check_writable(target)
-        self._require_sync()
+        await self._require_sync()
         self._on_disk(path).rename(self._on_disk(target))

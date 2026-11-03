@@ -2,7 +2,8 @@
 # Sandbox supervisor (root):
 #   1. mount the Box folder at /mnt/box as boxsvc;
 #   2. publish the daemon's status every 2s to /run/boxmount/status, and its file -> Box ID map to
-#      /run/boxmount/item_map.json (the agent can't read the daemon's state: it's private to boxsvc);
+#      /run/boxmount/item_map.json (the agent can't read the daemon's state: it's private to boxsvc),
+#      and remount the folder if the daemon stops;
 #   3. run this sandbox's agent worker as `agent`, without the BOX_* credentials, and restart it
 #      whenever it exits. While /run/demo/hold exists the worker stays down (`just kill`).
 set -eu
@@ -11,6 +12,18 @@ set -eu
 DATA=/home/boxsvc/.box-mount
 BM="box-mount --data-path $DATA"
 log() { echo "[$(hostname) supervisor] $*"; }
+# The Box key must be readable by boxsvc only. `docker cp` leaves it owned by the host user.
+own_key() { [ -f "$DATA/box-jwt-config.json" ] && chown boxsvc:boxmount "$DATA/box-jwt-config.json" && chmod 600 "$DATA/box-jwt-config.json"; true; }
+remount() {
+  own_key
+  # A mount record left by a previous daemon has a stale pid (often reused by this container),
+  # and box-mount 0.6.0 refuses to mount over it. Plain `unmount` (no --reset-force) keeps unsynced
+  # local edits but clears the sync database, so the mount re-downloads from Box (~8s).
+  if [ -f "$DATA/mount.json" ]; then
+    su boxsvc -s /bin/sh -c "$BM unmount /mnt/box" >/dev/null 2>&1 || true
+  fi
+  su boxsvc -s /bin/sh -c "$BM mount /mnt/box '$BOX_FOLDER_ID'"
+}
 
 if [ "${BOX_AUTH_TYPE:-}" = "jwt" ] && [ ! -r "${BOX_JWT_CONFIG_PATH:-/nonexistent}" ]; then
   log "BOX_AUTH_TYPE=jwt but ${BOX_JWT_CONFIG_PATH:-BOX_JWT_CONFIG_PATH} is missing: start sandboxes with 'just up'" >&2
@@ -19,7 +32,7 @@ fi
 
 mkdir -p "$DATA" /run/boxmount /run/demo /run/boxmount/requests
 chown -R boxsvc:boxmount "$DATA" && chmod 700 "$DATA"
-[ -f "$DATA/box-jwt-config.json" ] && chmod 600 "$DATA/box-jwt-config.json"
+own_key
 chmod 755 /run/boxmount /run/demo
 chmod 1777 /run/boxmount/requests   # the agent drops requests here (e.g. a sync pulse)
 chown boxsvc:boxmount /mnt/box
@@ -28,19 +41,20 @@ chown boxsvc:boxmount /mnt/box
 setfacl -R -m g:boxmount:rwX /mnt/box
 find /mnt/box -type d -exec setfacl -m d:g:boxmount:rwX {} +
 
-# A mount record left by a previous container has a stale pid (often reused by this container),
-# and box-mount 0.6.0 refuses to mount over it. Plain `unmount` (no --reset-force) keeps unsynced
-# local edits but clears the sync database, so the mount below re-downloads from Box (~8s).
-if [ -f "$DATA/mount.json" ]; then
-  su boxsvc -s /bin/sh -c "$BM unmount /mnt/box" >/dev/null
-fi
-su boxsvc -s /bin/sh -c "$BM mount /mnt/box '$BOX_FOLDER_ID'"
+remount
 
-# 2. status heartbeat
+# 2. status heartbeat, and remount after three checks in a row (~6 s) without a running daemon
 (
+  down=0
   while true; do
     su boxsvc -s /bin/sh -c "$BM status" > /run/boxmount/status.tmp 2>&1 || true
     mv /run/boxmount/status.tmp /run/boxmount/status
+    if grep -q "status=running" /run/boxmount/status; then down=0; else down=$((down + 1)); fi
+    if [ "$down" -ge 3 ]; then
+      log "Box Mount is not running ($(cat /run/boxmount/status)): remounting"
+      remount || log "remount failed; trying again shortly"
+      down=0
+    fi
     # Sync pulse requested by an agent: rewrite this sandbox's pulse file in place, as its owner.
     # The upload echoes back and makes the daemon re-list remote changes (catches a missed
     # notification). The agent can't write it itself: files Box Mount downloads are read-only to
