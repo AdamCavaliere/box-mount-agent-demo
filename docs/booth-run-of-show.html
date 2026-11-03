@@ -159,7 +159,7 @@ footer { color: var(--muted); font-size: 13px; border-top: 1px solid var(--rule)
   <div class="beat">
     <header><h3>One command</h3><span class="time">~45 s to ready</span></header>
     <div class="cmd"><code>just booth-launch</code><button class="copy" type="button" data-copy="cd ~/box-mount-agent-demo && just booth-launch">Copy</button></div>
-    <span class="line">Opens one Ghostty window with five titled tabs (Temporal, Session manager, Sandboxes, Booth UI, Ticker), starts each in the right order, and opens the Harness UI, Temporal UI and Box folder in your browser once the UI is up. The steps below are what it runs, if you'd rather start them by hand. <code>just booth-launch dry</code> opens the tabs but only prints the commands. The first run asks macOS for permission to control Ghostty: allow it.</span>
+    <span class="line">Opens one Ghostty window with six titled tabs (Temporal, Session manager, Sandboxes, Booth UI, Ticker, Crash), starts each in the right order, and opens the Harness UI, Temporal UI, Box folder and, last, the architecture diagram in your browser once the UI is up. The steps below are what it runs, if you'd rather start them by hand. <code>just booth-launch dry</code> opens the tabs but only prints the commands. The first run asks macOS for permission to control Ghostty: allow it.</span>
   </div>
   <p class="prose">Run everything from <code>~/box-mount-agent-demo</code>. If the full demo's <code>just server</code> is running, stop it first: both UIs use port 8000.</p>
   <ol class="steps">
@@ -271,7 +271,7 @@ footer { color: var(--muted); font-size: 13px; border-top: 1px solid var(--rule)
 
 <section>
   <h2>Shut down</h2>
-  <p class="prose">One command stops Temporal, the session manager, the booth UI, the ticker and the sandboxes (the Ghostty tabs stay open at a prompt):</p>
+  <p class="prose">One command stops Temporal, the session manager, the booth UI, the ticker and the sandboxes and closes the Ghostty window:</p>
   <div class="cmd"><code>just booth-stop</code><button class="copy" type="button" data-copy="cd ~/box-mount-agent-demo && just booth-stop">Copy</button></div>
 </section>
 

@@ -149,8 +149,9 @@ just ticker            # the on-screen strip of files crossing between sandboxes
 ```
 
 **One command:** `just booth-launch` opens a Ghostty window with a titled tab per process (Temporal,
-session manager, sandboxes, booth UI, ticker), starts them in order, and opens the Harness UI, Temporal
-UI and Box folder in the browser; `just booth-stop` stops it all. `just booth-launch dry` only echoes.
+session manager, sandboxes, booth UI, ticker, crash), starts them in order, and opens the Harness UI,
+Temporal UI, Box folder and, last, the architecture diagram (`docs/booth-architecture.html`) in the
+browser; `just booth-stop` stops it all and closes the window. `just booth-launch dry` only echoes.
 
 Screen: Harness UI on the left, the Box web app open at `Booth/` on the right, `just ticker` along
 the bottom; the Temporal UI (http://localhost:8233) in another tab.

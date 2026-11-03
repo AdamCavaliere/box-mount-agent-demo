@@ -292,3 +292,4 @@ _wait-sandboxes:
 _open-booth-pages-when-up:
     @until nc -z 127.0.0.1 8000 2>/dev/null; do sleep 1; done; sleep 2
     @open "http://localhost:8000"; open "http://localhost:8233"; open "https://app.box.com/folder/${BOOTH_BOX_FOLDER_ID:-427527786148}"
+    @sleep 1; open "{{justfile_directory()}}/docs/booth-architecture.html"
