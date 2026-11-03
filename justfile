@@ -280,13 +280,29 @@ booth-launch mode="":
     @echo "opened the booth window (Ghostty window $(cat .booth-window))"
 
 # Stop everything booth-launch started and the booth sandboxes, then close booth-launch's window.
+# First terminates every running workflow (sessions, agents, session managers), while Temporal is up.
 # The close runs a second after this recipe exits, so it also works when run from one of those tabs.
 booth-stop:
+    -just _end-workflows
     -pkill -f "scripts/ticker.py"
     -pkill -f "harness_cli.py"
     -pkill -f "temporal server start-dev --ip 0.0.0.0"
     docker compose --profile booth down
     -@id=$(cat .booth-window 2>/dev/null); rm -f .booth-window; nohup sh -c "sleep 1; osascript scripts/booth-ghostty-close.applescript '$id'" >/dev/null 2>&1 &
+
+# Terminate every running workflow on the local Temporal dev server, and wait for them to close.
+_end-workflows:
+    #!/usr/bin/env bash
+    if ! nc -z 127.0.0.1 7233 2>/dev/null; then echo "Temporal not running: no workflows to end"; exit 0; fi
+    q="ExecutionStatus='Running'"
+    count() { temporal workflow count --query "$q" -o json | python3 -c "import json,sys; print(json.load(sys.stdin).get('count', 0))"; }
+    n=$(count)
+    if [ "${n:-0}" = 0 ]; then echo "no running workflows"; exit 0; fi
+    echo "terminating $n running workflow(s):"
+    temporal workflow list --query "$q" -o json | python3 -c "import json,sys; [print('  ', w['execution']['workflowId']) for w in json.load(sys.stdin)]"
+    temporal workflow terminate --query "$q" --reason "just booth-stop" --yes >/dev/null
+    for i in $(seq 1 15); do [ "$(count)" = 0 ] && exit 0; sleep 1; done
+    echo "some workflows were still closing after 15 s: check the Temporal UI"
 
 # Helpers for booth-launch: wait for Temporal, for the sandboxes, and open the pages once the UI is up.
 _wait-temporal:
