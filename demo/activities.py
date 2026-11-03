@@ -371,8 +371,10 @@ class PublishResult(BaseModel):
 
 LINK_ACTIVITY = ActivityConfig(
     start_to_close_timeout=timedelta(seconds=10),
+    # Long enough to ride out the sandbox supervisor remounting a hung daemon (~2 minutes).
+    schedule_to_close_timeout=timedelta(minutes=4),
     retry_policy=RetryPolicy(initial_interval=timedelta(seconds=1), backoff_coefficient=1.5,
-                             maximum_interval=timedelta(seconds=3), maximum_attempts=30),
+                             maximum_interval=timedelta(seconds=3)),
 )
 
 

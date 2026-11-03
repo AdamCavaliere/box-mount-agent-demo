@@ -3,7 +3,7 @@
 #   1. mount the Box folder at /mnt/box as boxsvc;
 #   2. publish the daemon's status every 2s to /run/boxmount/status, and its file -> Box ID map to
 #      /run/boxmount/item_map.json (the agent can't read the daemon's state: it's private to boxsvc),
-#      and remount the folder if the daemon stops;
+#      and remount the folder if the daemon stops or hangs;
 #   3. run this sandbox's agent worker as `agent`, without the BOX_* credentials, and restart it
 #      whenever it exits. While /run/demo/hold exists the worker stays down (`just kill`).
 set -eu
@@ -14,6 +14,16 @@ BM="box-mount --data-path $DATA"
 log() { echo "[$(hostname) supervisor] $*"; }
 # The Box key must be readable by boxsvc only. `docker cp` leaves it owned by the host user.
 own_key() { [ -f "$DATA/box-jwt-config.json" ] && chown boxsvc:boxmount "$DATA/box-jwt-config.json" && chmod 600 "$DATA/box-jwt-config.json"; true; }
+# Box Mount 0.6.0 can also hang with status=running: a full listing of the folder that starts and
+# never completes, so no remote change syncs in. True when the latest listing started over 90 s ago.
+listing_stuck() {
+  f=$(ls -t "$DATA"/logs/box-mount-sync-2*.log 2>/dev/null | head -1)
+  [ -n "$f" ] || return 1
+  last=$(grep -E "READ\.list_full\.(start|complete)" "$f" | tail -1)
+  case "$last" in *list_full.start*) ;; *) return 1 ;; esac
+  started=$(date -d "$(echo "$last" | cut -c1-19)" +%s 2>/dev/null) || return 1
+  [ $(( $(date +%s) - started )) -gt 90 ]
+}
 remount() {
   own_key
   # A mount record left by a previous daemon has a stale pid (often reused by this container),
@@ -43,7 +53,8 @@ find /mnt/box -type d -exec setfacl -m d:g:boxmount:rwX {} +
 
 remount
 
-# 2. status heartbeat, and remount after three checks in a row (~6 s) without a running daemon
+# 2. status heartbeat, and remount after three checks in a row (~6 s) without a running daemon, or
+#    when a listing has hung
 (
   down=0
   while true; do
@@ -54,6 +65,9 @@ remount
       log "Box Mount is not running ($(cat /run/boxmount/status)): remounting"
       remount || log "remount failed; trying again shortly"
       down=0
+    elif listing_stuck; then
+      log "Box Mount's folder listing has not finished in 90 s: remounting"
+      remount || log "remount failed; trying again shortly"
     fi
     # Sync pulse requested by an agent: rewrite this sandbox's pulse file in place, as its owner.
     # The upload echoes back and makes the daemon re-list remote changes (catches a missed

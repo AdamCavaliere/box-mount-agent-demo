@@ -38,7 +38,7 @@ with workflow.unsafe.imports_passed_through():
     from temporal_agent_harness.harness.agent_workflow import AgentWorkflowRunner, ToolApprovalDenied
 
     from ..config import QUEUES, WORKFLOW_TYPES
-    from ..handoff_activities import await_change, fingerprint
+    from ..handoff_activities import await_change, await_handoff, fingerprint
     from ..activities import box_link, ocr_document, publish_memo, read_box_text
     from .common import run_model_turn
     from .idle import close_when_idle
@@ -187,6 +187,8 @@ class BoxRelayAgentWorkflow:
         """The human-in-the-loop step: link the memo in Box, and publish it only if a person approves."""
         memo = reviewed.outputs[0]
         self._memo, self._published = memo.path, ""
+        # The memo was written in the Reviewer's sandbox: wait for that version to sync into this one.
+        await self._runner.run_tool(_call_id(), await_handoff, ref=memo)
         link = await self._runner.run_tool(_call_id(), box_link, path=memo.path)
         summary = reviewed.summary.strip().splitlines()[0][:300] if reviewed.summary.strip() else ""
         # Shown in the chat now, while the approval waits, so the approver can open the memo first.
