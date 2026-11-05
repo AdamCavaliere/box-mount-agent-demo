@@ -69,6 +69,10 @@ remount
       log "Box Mount's folder listing has not finished in 90 s: remounting"
       remount || log "remount failed; trying again shortly"
     fi
+    # Hand files the agent wrote to boxsvc; the group keeps read-write, so the agent can still
+    # rewrite them. Box Mount must own a file to update it from Box: as a non-owner it can write the
+    # content but not set the timestamps, and falls into a conflict-copy loop (one every ~2 s).
+    find /mnt/box -user agent -exec chown boxsvc {} + 2>/dev/null || true
     # Sync pulse requested by an agent: rewrite this sandbox's pulse file in place, as its owner.
     # The upload echoes back and makes the daemon re-list remote changes (catches a missed
     # notification). The agent can't write it itself: files Box Mount downloads are read-only to
