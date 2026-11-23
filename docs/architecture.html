@@ -1,0 +1,306 @@
+<title>Box Relay Architecture</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: one wide system diagram (Temporal on top, harnesses, sandboxes, Box at the bottom), then the run in order, then why it's built this way. */
+:root {
+  --bg: #f6f7fa; --panel: #ffffff; --ink: #18202e; --muted: #5a6476; --line: #d9dee8;
+  --box: #0b63ce; --box-soft: #e7f0fc;
+  --tmp: #6a4fd8; --tmp-soft: #efebfd;
+  --human: #b8650a; --human-soft: #fdf1e2;
+  --sbx: #2f6b4f; --sbx-soft: #eef5f1;
+  --display: "Bricolage Grotesque", "Avenir Next", system-ui, sans-serif;
+  --body: "IBM Plex Sans", "Helvetica Neue", system-ui, sans-serif;
+  --mono: "IBM Plex Mono", ui-monospace, "SF Mono", Menlo, monospace;
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+  --bg: #10141c; --panel: #171c27; --ink: #e8ecf3; --muted: #9aa4b6; --line: #2c3342;
+  --box: #5aa2f5; --box-soft: #13253d; --tmp: #a592f5; --tmp-soft: #221c3d;
+  --human: #f0a24b; --human-soft: #33240f; --sbx: #6cc39a; --sbx-soft: #14241d; color-scheme: dark } }
+:root[data-theme="dark"] {
+  --bg: #10141c; --panel: #171c27; --ink: #e8ecf3; --muted: #9aa4b6; --line: #2c3342;
+  --box: #5aa2f5; --box-soft: #13253d; --tmp: #a592f5; --tmp-soft: #221c3d;
+  --human: #f0a24b; --human-soft: #33240f; --sbx: #6cc39a; --sbx-soft: #14241d; color-scheme: dark }
+
+body { background: var(--bg); color: var(--ink); font-family: var(--body); font-size: 15px; line-height: 1.55; }
+.wrap { max-width: 1180px; margin: 0 auto; padding-block: 40px 56px;
+  padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px));
+  display: grid; gap: 40px; }
+header { display: grid; gap: 10px; max-width: 72ch; }
+.eyebrow { font-family: var(--mono); font-size: 12px; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
+h1 { font-family: var(--display); font-weight: 700; font-size: clamp(30px, 4.4vw, 46px); line-height: 1.08; margin: 0; text-wrap: balance; }
+h2 { font-family: var(--display); font-weight: 600; font-size: 22px; margin: 0; text-wrap: balance; }
+.lede { font-size: 17px; color: var(--muted); margin: 0; }
+.lede b { color: var(--ink); font-weight: 600; }
+code, .mono { font-family: var(--mono); font-size: .9em; }
+
+.diagram { background: var(--panel); border: 1px solid var(--line); border-radius: 14px; padding: 12px; overflow-x: auto; }
+.diagram svg { display: block; width: 100%; min-width: 900px; height: auto; }
+svg text { font-family: var(--body); fill: var(--ink); }
+svg .mono { font-family: var(--mono); }
+svg .muted { fill: var(--muted); }
+svg .box-t { fill: var(--box); } svg .tmp-t { fill: var(--tmp); } svg .hum-t { fill: var(--human); }
+svg .box-panel { fill: var(--box-soft); stroke: var(--box); stroke-width: 1.5; }
+svg .chip { fill: var(--panel); stroke: var(--line); }
+svg .card { fill: var(--panel); stroke: var(--ink); stroke-opacity: .35; }
+svg .mount { fill: var(--box-soft); stroke: var(--box); stroke-opacity: .5; }
+svg .worker { fill: var(--tmp-soft); stroke: var(--tmp); stroke-opacity: .5; }
+svg .sbx-zone { fill: var(--sbx-soft); stroke: var(--sbx); stroke-opacity: .35; }
+svg .sbx { fill: var(--bg); stroke: var(--sbx); stroke-width: 1.6; stroke-dasharray: 7 5; }
+svg .sbx-t { fill: var(--sbx); }
+svg .tmp-panel { fill: var(--tmp-soft); stroke: var(--tmp); stroke-width: 1.5; }
+svg .q { fill: var(--panel); stroke: var(--tmp); }
+svg .hum { fill: var(--human-soft); stroke: var(--human); }
+svg .sync { stroke: var(--box); stroke-width: 2; fill: none; }
+svg .tline { stroke: var(--tmp); stroke-width: 1.5; stroke-dasharray: 4 4; fill: none; }
+svg .arrowhead-box { fill: var(--box); }
+svg .arrowhead-ink { fill: var(--ink); }
+svg .outer { fill: var(--panel); stroke: var(--ink); stroke-width: 2; }
+svg .ctl { stroke: var(--ink); stroke-width: 2.5; fill: none; }
+svg .api { stroke: var(--box); stroke-width: 2; stroke-dasharray: 6 4; fill: none; }
+svg .nomount { fill: var(--panel); stroke: var(--box); stroke-opacity: .6; stroke-dasharray: 5 4; }
+svg .copy { stroke: var(--box); stroke-width: 2.5; fill: none; }
+svg .title { font-family: var(--display); font-weight: 600; }
+
+.cols { display: grid; grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr); gap: 32px; align-items: start; }
+@media (max-width: 860px) { .cols { grid-template-columns: minmax(0, 1fr); } }
+section { display: grid; gap: 16px; min-width: 0; }
+ol.run { list-style: none; margin: 0; padding: 0; display: grid; gap: 14px; counter-reset: step; }
+ol.run li { counter-increment: step; display: grid; grid-template-columns: 34px minmax(0, 1fr); gap: 12px; }
+ol.run li::before { content: counter(step); font-family: var(--display); font-weight: 700; font-size: 16px;
+  width: 30px; height: 30px; border-radius: 50%; display: grid; place-items: center;
+  border: 1.5px solid var(--ink); color: var(--ink); }
+ol.run li.human::before { border-color: var(--human); color: var(--human); }
+.run b, .addon b, .why b { font-weight: 600; }
+.run p, .addon p, .why p { margin: 0; }
+.who { font-family: var(--mono); font-size: 12px; color: var(--muted); }
+
+.addons { display: grid; gap: 12px; }
+.addon { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 16px 18px; display: grid; gap: 6px; }
+.tag { font-family: var(--mono); font-size: 11.5px; letter-spacing: .06em; text-transform: uppercase; }
+.tag.h { color: var(--human); } .tag.t { color: var(--tmp); }
+
+.why { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 24px; border-top: 1px solid var(--line); padding-top: 24px; }
+@media (max-width: 980px) { .why { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 600px) { .why { grid-template-columns: minmax(0, 1fr); } }
+.why div { display: grid; gap: 6px; align-content: start; }
+.why .k { font-family: var(--mono); font-size: 12px; letter-spacing: .06em; text-transform: uppercase; color: var(--box); }
+.why .k.t { color: var(--tmp); }
+.why .k.s { color: var(--sbx); }
+footer { font-family: var(--mono); font-size: 12px; color: var(--muted); }
+</style>
+
+<div class="wrap">
+  <header>
+    <div class="eyebrow">Box Relay · contract review</div>
+    <h1>Harnesses decide, sandboxes do the work, Box carries the files</h1>
+    <p class="lede">The <b>Extractor</b> and the <b>Contract reviewer</b> are <b>inner harnesses</b>: model loops that decide what to do next. Each controls its own Linux <b>sandbox</b>, and its <b>Box Mount</b> syncs only that agent's own Box folder, so the contract PDF never reaches the Reviewer. The <b>outer harness</b> is the coordinator, a scripted workflow with no model and no Box Mount. Through the Box API it pins every file version, hands the exact extraction to the Reviewer, and checks after each step that nothing changed. If something did, it stops and asks a person. Every harness runs on <b>Temporal</b>, so every wait, approval and crash is durable.</p>
+  </header>
+
+  <div class="diagram" role="img" aria-label="Diagram, top to bottom: Temporal, holding each harness&apos;s state with one task queue per harness; three harnesses as the control plane: the outer harness (the coordinator, no model) pins and checks file versions and starts two inner harnesses, Extractor and Contract reviewer; three Linux sandboxes where the work runs: the coordinator&apos;s has no Box Mount and uses the Box API, the Extractor&apos;s mounts only Extraction/ and the Reviewer&apos;s mounts only Review/; and Box at the bottom, where the coordinator copies the exact extraction version from Extraction/ to Review/ and publishes approved memos to Reviewed/.">
+    <svg viewBox="0 0 1200 860" xmlns="http://www.w3.org/2000/svg">
+      <defs>
+        <marker id="ah" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+          <path d="M0,0 L10,5 L0,10 z" class="arrowhead-box"/>
+        </marker>
+        <marker id="ahk" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto">
+          <path d="M0,0 L10,5 L0,10 z" class="arrowhead-ink"/>
+        </marker>
+      </defs>
+
+      <!-- Temporal: underneath every harness -->
+      <rect x="24" y="16" width="1152" height="106" rx="14" class="tmp-panel"/>
+      <text x="40" y="42" class="title tmp-t" font-size="19">Temporal</text>
+      <text x="128" y="42" class="muted" font-size="13">durable execution · each harness's state and history live here, outside the sandboxes</text>
+      <text x="40" y="63" font-size="12.5">Each harness's steps go to its sandbox's queue · waits on Box, a sync or a person hold no thread · kill -9 a worker and the same call resumes</text>
+      <rect x="100" y="76" width="220" height="30" rx="15" class="q"/>
+      <text x="210" y="96" text-anchor="middle" class="mono tmp-t" font-size="12">queue box-coordinator</text>
+      <line x1="210" y1="106" x2="210" y2="150" class="tline"/>
+      <rect x="490" y="76" width="220" height="30" rx="15" class="q"/>
+      <text x="600" y="96" text-anchor="middle" class="mono tmp-t" font-size="12">queue box-extractor</text>
+      <line x1="600" y1="106" x2="600" y2="150" class="tline"/>
+      <rect x="870" y="76" width="220" height="30" rx="15" class="q"/>
+      <text x="980" y="96" text-anchor="middle" class="mono tmp-t" font-size="12">queue box-reviewer</text>
+      <line x1="980" y1="106" x2="980" y2="150" class="tline"/>
+
+      <!-- control plane: the harnesses decide what happens next -->
+      <g>
+        <rect x="40" y="150" width="340" height="210" rx="14" class="outer"/>
+        <text x="58" y="174" class="mono" font-size="10.5" letter-spacing="1.2" font-weight="500">OUTER HARNESS</text>
+        <text x="58" y="200" class="title" font-size="19">Coordinator</text>
+        <text x="58" y="220" class="muted" font-size="13">Scripted workflow, no model of its own</text>
+        <text x="58" y="246" font-size="13.5">Pins every file version in Box</text>
+        <text x="58" y="266" font-size="13.5">Checks them all after each step</text>
+        <text x="58" y="286" font-size="13.5">Copies the exact extraction to Review/</text>
+        <text x="58" y="306" font-size="13.5">Supplier check (ERP) · spend (Databricks)</text>
+        <text x="58" y="326" font-size="13.5" class="hum-t" font-weight="600">Asks a person: file changed? publish?</text>
+        <text x="58" y="346" font-size="12.5" class="muted">Sees versions and hashes, never content</text>
+        <rect x="420" y="150" width="360" height="210" rx="14" class="outer"/>
+        <text x="438" y="174" class="mono" font-size="10.5" letter-spacing="1.2" font-weight="500">INNER HARNESS</text>
+        <text x="438" y="200" class="title" font-size="19">Extractor</text>
+        <text x="438" y="220" class="muted" font-size="13">Model loop with its own tools</text>
+        <text x="438" y="246" font-size="13.5">Sees only its own folder, Extraction/</text>
+        <text x="438" y="266" font-size="13.5">Waits for the pinned contract version</text>
+        <text x="438" y="286" font-size="13.5">Reads the PDF, every clause verbatim</text>
+        <text x="438" y="306" font-size="13.5">Writes extraction.json, nothing else</text>
+        <rect x="800" y="150" width="360" height="210" rx="14" class="outer"/>
+        <text x="818" y="174" class="mono" font-size="10.5" letter-spacing="1.2" font-weight="500">INNER HARNESS</text>
+        <text x="818" y="200" class="title" font-size="19">Contract reviewer</text>
+        <text x="818" y="220" class="muted" font-size="13">Never sees the PDF</text>
+        <text x="818" y="246" font-size="13.5">Sees only its own folder, Review/</text>
+        <text x="818" y="266" font-size="13.5">Waits for the copied extraction.json</text>
+        <text x="818" y="286" font-size="13.5">Reads the playbook fresh every time</text>
+        <text x="818" y="306" font-size="13.5">Writes review_memo.md and findings</text>
+      </g>
+      <line x1="382" y1="235" x2="416" y2="235" class="ctl" marker-end="url(#ahk)"/>
+      <text x="400" y="225" text-anchor="middle" font-size="11.5" font-weight="600">starts</text>
+      <path d="M300,360 V378 H880 V364" class="ctl" marker-end="url(#ahk)"/>
+      <text x="420" y="396" text-anchor="middle" font-size="11.5" font-weight="600">starts each inner harness as a child workflow</text>
+      <line x1="150" y1="362" x2="150" y2="498" class="ctl" marker-end="url(#ahk)"/>
+      <text x="160" y="414" font-size="12" font-weight="600">runs steps in</text>
+      <line x1="600" y1="362" x2="600" y2="498" class="ctl" marker-end="url(#ahk)"/>
+      <text x="610" y="414" font-size="12" font-weight="600">runs steps in</text>
+      <line x1="980" y1="362" x2="980" y2="498" class="ctl" marker-end="url(#ahk)"/>
+      <text x="990" y="414" font-size="12" font-weight="600">runs steps in</text>
+
+      <!-- where the work runs: one Linux container per harness -->
+      <rect x="24" y="420" width="1152" height="188" rx="14" class="sbx-zone"/>
+      <text x="40" y="441" class="title sbx-t" font-size="15">Sandboxes</text>
+      <text x="620" y="441" class="muted" font-size="12.5">where the work runs · own disk · each agent mounts only its own folder</text>
+      <g>
+        <rect x="40" y="452" width="340" height="140" rx="12" class="sbx"/>
+        <text x="56" y="472" class="mono sbx-t" font-size="10.5" letter-spacing="1.2">LINUX SANDBOX</text>
+        <text x="56" y="490" class="mono" font-size="11">sandbox-coordinator</text>
+        <rect x="52" y="500" width="316" height="24" rx="7" class="worker"/>
+        <text x="64" y="517" class="mono tmp-t" font-size="11">Temporal worker · box-coordinator</text>
+        <text x="56" y="544" font-size="12.5"><tspan font-weight="600">Runs here:</tspan> Box API checks, ERP, Databricks</text>
+        <rect x="52" y="554" width="316" height="30" rx="7" class="nomount"/>
+        <text x="64" y="574" class="mono box-t" font-size="11.5">No Box Mount · Box API only</text>
+        <rect x="420" y="452" width="360" height="140" rx="12" class="sbx"/>
+        <text x="436" y="472" class="mono sbx-t" font-size="10.5" letter-spacing="1.2">LINUX SANDBOX</text>
+        <text x="436" y="490" class="mono" font-size="11">sandbox-extractor</text>
+        <rect x="432" y="500" width="336" height="24" rx="7" class="worker"/>
+        <text x="444" y="517" class="mono tmp-t" font-size="11">Temporal worker · box-extractor</text>
+        <text x="436" y="544" font-size="12.5"><tspan font-weight="600">Runs here:</tspan> model calls, PDF read, Python</text>
+        <rect x="432" y="554" width="336" height="30" rx="7" class="mount"/>
+        <text x="444" y="574" class="mono box-t" font-size="11.5">Box Mount · Extraction/ → /box</text>
+        <rect x="800" y="452" width="360" height="140" rx="12" class="sbx"/>
+        <text x="816" y="472" class="mono sbx-t" font-size="10.5" letter-spacing="1.2">LINUX SANDBOX</text>
+        <text x="816" y="490" class="mono" font-size="11">sandbox-reviewer</text>
+        <rect x="812" y="500" width="336" height="24" rx="7" class="worker"/>
+        <text x="824" y="517" class="mono tmp-t" font-size="11">Temporal worker · box-reviewer</text>
+        <text x="816" y="544" font-size="12.5"><tspan font-weight="600">Runs here:</tspan> model calls, file reads, Python</text>
+        <rect x="812" y="554" width="336" height="30" rx="7" class="mount"/>
+        <text x="824" y="574" class="mono box-t" font-size="11.5">Box Mount · Review/ → /box</text>
+      </g>
+
+      <!-- to and from Box: the coordinator through the API, each agent through its own mount -->
+      <g font-size="12">
+        <line x1="150" y1="596" x2="150" y2="684" class="api" marker-start="url(#ah)" marker-end="url(#ah)"/>
+        <text x="162" y="622" class="box-t" font-weight="600">Box API</text>
+        <text x="162" y="638" class="box-t">versions + SHA-1,</text>
+        <text x="162" y="654" class="box-t">server-side copies,</text>
+        <text x="162" y="670" class="box-t">no file content</text>
+        <line x1="635" y1="686" x2="635" y2="596" class="sync" marker-end="url(#ah)"/>
+        <line x1="690" y1="596" x2="690" y2="686" class="sync" marker-end="url(#ah)"/>
+        <text x="625" y="644" text-anchor="end" class="box-t mono" font-size="11.5">contract PDF</text>
+        <text x="700" y="644" text-anchor="start" class="box-t mono" font-size="11.5">extraction.json</text>
+        <line x1="1015" y1="686" x2="1015" y2="596" class="sync" marker-end="url(#ah)"/>
+        <line x1="1070" y1="596" x2="1070" y2="686" class="sync" marker-end="url(#ah)"/>
+        <text x="1005" y="636" text-anchor="end" class="box-t mono" font-size="11.5">extraction.json,</text>
+        <text x="1005" y="651" text-anchor="end" class="box-t mono" font-size="11.5">playbook.md</text>
+        <text x="1080" y="636" text-anchor="start" class="box-t mono" font-size="11.5">memo,</text>
+        <text x="1080" y="651" text-anchor="start" class="box-t mono" font-size="11.5">findings</text>
+      </g>
+
+      <!-- Box -->
+      <rect x="24" y="690" width="1152" height="152" rx="14" class="box-panel"/>
+      <text x="40" y="718" class="title box-t" font-size="19">Box · demo folder</text>
+      <text x="212" y="718" class="muted" font-size="13">the only place files live · Box permissions and version history govern it</text>
+      <g font-size="13">
+        <rect x="40" y="734" width="340" height="92" rx="9" class="chip"/>
+        <text x="56" y="758" class="mono" font-weight="500">Reviewed/</text>
+        <text x="146" y="758" class="muted" font-size="12">nobody mounts it</text>
+        <text x="56" y="780" class="muted" font-size="12.5">The memo version a person approved,</text>
+        <text x="56" y="798" class="muted" font-size="12.5">copied here by the coordinator</text>
+
+        <rect x="420" y="734" width="280" height="92" rx="9" class="chip"/>
+        <text x="436" y="758" class="mono" font-weight="500">Extraction/</text>
+        <text x="540" y="758" class="muted" font-size="12">Extractor's mount</text>
+        <text x="436" y="780" class="muted mono" font-size="11.5">Incoming/Halvorsen_…Agreement.pdf</text>
+        <text x="436" y="798" class="muted mono" font-size="11.5">Work/&lt;run&gt;/extraction.json</text>
+
+        <line x1="704" y1="796" x2="814" y2="796" class="copy" marker-end="url(#ah)"/>
+        <text x="760" y="764" text-anchor="middle" class="box-t" font-size="11.5" font-weight="600">exact version</text>
+        <text x="760" y="780" text-anchor="middle" class="box-t" font-size="11.5">copied in Box</text>
+        <text x="760" y="816" text-anchor="middle" class="box-t" font-size="11.5">by coordinator</text>
+
+        <rect x="820" y="734" width="340" height="92" rx="9" class="hum"/>
+        <text x="836" y="758" class="mono" font-weight="500">Review/</text>
+        <text x="904" y="758" class="muted" font-size="12">Reviewer's mount</text>
+        <text x="836" y="780" class="mono" font-size="11.5">Playbook/playbook.md <tspan class="hum-t" style="font-family: var(--body)" font-weight="600">· people edit it</tspan></text>
+        <text x="836" y="798" class="muted mono" font-size="11.5">Work/&lt;run&gt;/extraction.json (copy),</text>
+        <text x="836" y="814" class="muted mono" font-size="11.5">review_memo.md, review_findings.json</text>
+      </g>
+
+    </svg>
+  </div>
+
+  <div class="cols">
+    <section>
+      <h2>The run, about 90 seconds plus your clicks</h2>
+      <ol class="run">
+        <li><p><b>Type <code>go</code>.</b> The coordinator asks Box for the contract's and playbook's current versions and pins them: file ID, version and SHA-1. A new <code>Work/HALVORSEN-MSA/&lt;run&gt;/</code> folder means runs never collide. <span class="who">outer harness · Box API</span></p></li>
+        <li><p><b>Extractor, an inner harness.</b> Waits until the pinned contract version has synced into its own sandbox, reads it, writes <code>extraction.json</code>. The coordinator waits until Box holds exactly what the Extractor wrote, and pins that too. <span class="who">sandbox-extractor</span></p></li>
+        <li class="human"><p><b>Check.</b> The coordinator asks Box whether any pinned file has a new version. If someone changed one, it stops and asks you: continue with the new version (redoing what depends on it) or stop. It waits as long as it takes. <span class="who">outer harness · you</span></p></li>
+        <li><p><b>Supplier check and spend, in code.</b> A fixed activity reads the supplier out of the pinned extraction inside the Extractor's sandbox; only that fact reaches the coordinator. It checks the ERP and sanctions lists (retrying through an outage, <code>just flaky on</code>) and reads 12 months of spend from Databricks. <span class="who">outer harness</span></p></li>
+        <li><p><b>Handoff in Box.</b> The coordinator copies that exact extraction version from <code>Extraction/</code> into <code>Review/</code> on the Box side, and the Reviewer's Box Mount syncs it down. The PDF never moves. <span class="who">Box API · Box Mount</span></p></li>
+        <li><p><b>Contract reviewer, an inner harness.</b> Waits for the copied version, compares every clause with the playbook, and writes <code>review_memo.md</code> and <code>review_findings.json</code>. Another check follows. <span class="who">sandbox-reviewer</span></p></li>
+        <li class="human"><p><b>A person approves.</b> The card lists every version checked. Approve copies the memo version you saw to <code>Reviewed/</code> and records the findings in Databricks; an edit made after the card appeared isn't published. <span class="who">you</span></p></li>
+      </ol>
+    </section>
+
+    <section>
+      <h2>Add-ons</h2>
+      <div class="addons">
+        <div class="addon">
+          <span class="tag h">Change a file mid-run</span>
+          <p><b>While the Extractor works, save a new version of the contract or playbook in Box.</b> After the step, the coordinator stops with a card naming the file, both versions and who changed it. Approve to continue with the new version, reject to stop.</p>
+        </div>
+        <div class="addon">
+          <span class="tag h">A · a person edits in Box</span>
+          <p><b>Type <code>re-review</code>, then edit the playbook in the Box web app</b>, for example to allow Net 15 for Halvorsen. The coordinator sees the new version in Box and pins it, it syncs into the Reviewer's sandbox, and the Reviewer writes <code>review_memo_v2.md</code> with payment terms now OK.</p>
+        </div>
+        <div class="addon">
+          <span class="tag t">B · crash and resume</span>
+          <p><b>Run <code>just crash reviewer</code> during a review.</b> It kills the worker mid model call. The sandbox restarts it and, about 6 seconds later, Temporal retries the same call on the new worker. The memo lands once, with no duplicate writes.</p>
+        </div>
+        <div class="addon">
+          <span class="tag">Ask anything</span>
+          <p><b>After a run, ask a question</b> such as "what did the review find on liability?" A model answers, reading each file in the sandbox that holds it.</p>
+        </div>
+      </div>
+    </section>
+  </div>
+
+  <div class="why">
+    <div>
+      <span class="k s">Harness outside, sandbox inside</span>
+      <p><b>A harness decides; its sandbox does the work.</b> Each sandbox has its own disk, and the Python a model writes runs there. The harness's state lives in Temporal, so losing a sandbox loses no progress.</p>
+    </div>
+    <div>
+      <span class="k">Least privilege</span>
+      <p><b>Each agent sees only its own folder.</b> The Extractor has the PDF; the Reviewer has the playbook and a copy of the extraction. The coordinator holds no files at all, only versions and hashes.</p>
+    </div>
+    <div>
+      <span class="k">Governed in Box</span>
+      <p><b>No Box credentials in agent code.</b> The mounts authenticate for the agents; the coordinator uses the Box API. Box permissions, version history and the web app stay the source of truth for people.</p>
+    </div>
+    <div>
+      <span class="k t">Durable by default</span>
+      <p><b>A changed file, a person's answer or a restarted worker is just a step.</b> Temporal records each check and each wait, so the coordinator picks up exactly where it was.</p>
+    </div>
+  </div>
+
+  <footer>Box Mount 0.8.0 preview · Box API (box-sdk-gen 1.17) · temporal-agent-kit 0.12.1 · temporalio 1.35 · OpenAI Agents SDK · Databricks SQL</footer>
+</div>

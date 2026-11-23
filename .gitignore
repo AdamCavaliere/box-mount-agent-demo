@@ -1,0 +1,18 @@
+.env
+.env.local
+secrets/*
+!secrets/.gitkeep
+# Box Mount is a Box preview: bring your own binary (see private/README.md). Nothing else in
+# private/ is committed.
+private/*
+!private/README.md
+__pycache__/
+.venv/
+.temporal/
+seed/
+# `just launch`'s Ghostty window ID, for `just stop`.
+.launch-window
+
+# Databricks credentials for the coordinator's sandbox
+.env.databricks
+.ruff_cache/

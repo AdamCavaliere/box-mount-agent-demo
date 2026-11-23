@@ -1,0 +1,15 @@
+# The agent you start from the Agent Kit UI: Box Relay's coordinator (the outer harness). It starts
+# the Extractor and the Contract reviewer itself, each as a subagent on its own Task Queue
+# (box-extractor, box-reviewer), so each runs in its own sandbox.
+
+[[agents]]
+key = "box-relay"
+workflow_type = "BoxRelayAgent"
+agent = "demo.agents.coordinator_workflow:BoxRelayAgentWorkflow"
+task_queue = "box-coordinator"
+label = "Box Relay"
+description = """
+An Extractor and a Contract reviewer, each in its own sandbox with its own Box folder, hand a \
+contract review to each other through Box. The coordinator pins every file version and checks it \
+between steps; a person approves publishing. Type "go". Then edit Playbook/playbook.md in Box and \
+type "re-review"."""

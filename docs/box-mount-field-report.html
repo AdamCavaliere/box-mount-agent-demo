@@ -1,0 +1,464 @@
+<title>Box Mount 0.6.0 Field Report</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans+Condensed:wght@500;600&family=IBM+Plex+Sans:ital,wght@0,400;0,500;0,600;1,400&display=swap">
+<style>
+/* Layout: a single reading column (~70ch) with full-width evidence blocks and tables; a findings index up top. */
+:root {
+  --bg: #f6f7f9;
+  --surface: #ffffff;
+  --ink: #17202b;
+  --muted: #566273;
+  --rule: #d9dee5;
+  --accent: #1c5d8c;
+  --code-bg: #eef1f5;
+  --high: #b3261e;
+  --high-bg: #fbe9e7;
+  --med: #8a5a00;
+  --med-bg: #fdf1d8;
+  --low: #35607a;
+  --low-bg: #e6eef4;
+  --ok: #2e6b3f;
+  --ok-bg: #e5f2e8;
+  --display: "IBM Plex Sans Condensed", "Arial Narrow", system-ui, sans-serif;
+  --body: "IBM Plex Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --mono: "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #11161d; --surface: #171e27; --ink: #e3e8ee; --muted: #9aa6b5; --rule: #2a3440;
+    --accent: #7fb6de; --code-bg: #1d2631;
+    --high: #f2a198; --high-bg: #3a1d1b; --med: #e8c27a; --med-bg: #362b14;
+    --low: #9cc3dc; --low-bg: #1b2a36; --ok: #9fd2ab; --ok-bg: #1a2e21;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #11161d; --surface: #171e27; --ink: #e3e8ee; --muted: #9aa6b5; --rule: #2a3440;
+  --accent: #7fb6de; --code-bg: #1d2631;
+  --high: #f2a198; --high-bg: #3a1d1b; --med: #e8c27a; --med-bg: #362b14;
+  --low: #9cc3dc; --low-bg: #1b2a36; --ok: #9fd2ab; --ok-bg: #1a2e21;
+  color-scheme: dark;
+}
+
+body { background: var(--bg); color: var(--ink); font: 400 16px/1.6 var(--body); }
+.page { max-width: 880px; margin: 0 auto; padding-inline: 20px; padding-block: 40px 72px; display: grid; gap: 40px; }
+.prose { max-width: 70ch; }
+h1, h2, h3 { font-family: var(--display); line-height: 1.15; text-wrap: balance; margin: 0; }
+h1 { font-size: clamp(30px, 5vw, 40px); font-weight: 600; letter-spacing: -0.01em; }
+h2 { font-size: 24px; font-weight: 600; padding-top: 8px; border-top: 2px solid var(--ink); }
+h3 { font-size: 19px; font-weight: 600; }
+p { margin: 0; }
+section { display: grid; gap: 16px; }
+.stack { display: grid; gap: 12px; }
+a { color: var(--accent); }
+a:focus-visible, summary:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.eyebrow { font: 500 12px/1 var(--mono); letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); }
+.lede { font-size: 18px; color: var(--ink); max-width: 66ch; }
+.meta { color: var(--muted); font-size: 14px; }
+code, .mono { font-family: var(--mono); font-size: 0.88em; }
+:not(pre) > code { background: var(--code-bg); padding: 1px 5px; border-radius: 3px; overflow-wrap: anywhere; }
+pre { margin: 0; background: var(--code-bg); border: 1px solid var(--rule); border-radius: 4px; padding: 12px 14px; overflow-x: auto; font: 400 12.5px/1.55 var(--mono); }
+pre .hl { color: var(--high); font-weight: 500; }
+pre .dim { color: var(--muted); }
+ul, ol { margin: 0; padding-left: 1.25em; display: grid; gap: 6px; }
+
+.table-wrap { overflow-x: auto; border: 1px solid var(--rule); border-radius: 4px; background: var(--surface); }
+table { border-collapse: collapse; width: 100%; font-size: 14.5px; }
+th, td { text-align: left; vertical-align: top; padding: 9px 12px; border-bottom: 1px solid var(--rule); }
+th { font: 600 12px/1.3 var(--body); text-transform: uppercase; letter-spacing: 0.05em; color: var(--muted); background: var(--code-bg); }
+tr:last-child td { border-bottom: 0; }
+td.num, th.num { font-variant-numeric: tabular-nums; white-space: nowrap; }
+td a { text-decoration: none; }
+td a:hover { text-decoration: underline; }
+
+.sev { display: inline-block; font: 600 11px/1 var(--mono); letter-spacing: 0.06em; text-transform: uppercase; padding: 4px 7px; border-radius: 3px; white-space: nowrap; }
+.sev.high { color: var(--high); background: var(--high-bg); }
+.sev.med { color: var(--med); background: var(--med-bg); }
+.sev.low { color: var(--low); background: var(--low-bg); }
+.sev.doc { color: var(--muted); background: var(--code-bg); }
+.sev.ok { color: var(--ok); background: var(--ok-bg); }
+
+.finding { background: var(--surface); border: 1px solid var(--rule); border-radius: 6px; padding: 20px 22px; display: grid; gap: 14px; min-width: 0; }
+.finding header { display: flex; flex-wrap: wrap; align-items: baseline; gap: 10px 14px; }
+.finding .id { font: 500 13px/1 var(--mono); color: var(--muted); }
+.kv { display: grid; grid-template-columns: 9.5em 1fr; gap: 10px 16px; }
+.kv > dt { font: 600 12px/1.6 var(--body); text-transform: uppercase; letter-spacing: 0.05em; color: var(--muted); padding-top: 1px; }
+.kv > dd { margin: 0; min-width: 0; }
+.kv > dd > * + * { margin-top: 8px; }
+@media (max-width: 620px) { .kv { grid-template-columns: 1fr; gap: 2px; } .kv > dd { margin-bottom: 10px; } }
+
+.callout { border-left: 3px solid var(--accent); padding: 4px 0 4px 14px; color: var(--ink); max-width: 70ch; }
+.figures { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 12px; }
+.figure { background: var(--surface); border: 1px solid var(--rule); border-radius: 4px; padding: 12px 14px; display: grid; gap: 2px; }
+.figure b { font: 600 22px/1.2 var(--display); font-variant-numeric: tabular-nums; }
+.figure span { font-size: 13px; color: var(--muted); }
+footer { color: var(--muted); font-size: 13px; border-top: 1px solid var(--rule); padding-top: 16px; }
+@media (prefers-reduced-motion: reduce) { * { scroll-behavior: auto !important; } }
+</style>
+
+<main class="page">
+
+<header class="stack">
+  <p class="eyebrow">Private preview feedback · box-mount 0.6.0 · linux-aarch64</p>
+  <h1>Box Mount 0.6.0 Field Report</h1>
+  <p class="lede">Findings from building a multi-agent document-processing demo on Box Mount with the Temporal Agent Harness. Five sandboxes ran concurrently, each with its own box-mount daemon over the same Box folder, and handed files to one another only through Box.</p>
+  <p class="meta">Prepared by Adam Cavaliere, Temporal · Observed 13–15 October 2026 · All log timestamps are UTC on 14 October 2026</p>
+</header>
+
+<section>
+  <h2>Summary</h2>
+  <div class="prose stack">
+    <p>Box Mount did what we needed for the core of the demo. A daemon per sandbox kept a real POSIX directory in two-way sync with Box, with no FUSE or privileged container. Uploads landed in about 1.4 seconds, and a file written in one sandbox typically appeared in another in about 4 seconds. JWT setup was straightforward.</p>
+    <p>We hit three issues we would rate high. A folder that is deleted and later re-created can be bound to the trashed Box folder in other sandboxes, after which files fail to sync or upload to the wrong place. A near-simultaneous write from two sandboxes started an endless loop of conflict copies. Separately, the sync log records live OAuth access tokens in plain text. Several smaller issues affect restarts, change notifications and the permissions model Box recommends for agent sandboxes. Each has a workaround, which we list.</p>
+  </div>
+
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>#</th><th>Finding</th><th>Severity</th></tr></thead>
+      <tbody>
+        <tr><td class="num">1</td><td><a href="#f1">Re-created folder bound to trashed Box folder after inode reuse; files misplaced at the mount root or stuck</a></td><td><span class="sev high">High</span></td></tr>
+        <tr><td class="num">2</td><td><a href="#f2">OAuth access token written to sync logs in plain text at INFO</a></td><td><span class="sev high">High</span></td></tr>
+        <tr><td class="num">3</td><td><a href="#f3">Two sandboxes writing the same new file trigger an endless conflict-copy loop</a></td><td><span class="sev high">High</span></td></tr>
+        <tr><td class="num">4</td><td><a href="#f4">Remote folder deletes not fully applied locally ("Unable to resolve local item")</a></td><td><span class="sev med">Medium</span></td></tr>
+        <tr><td class="num">5</td><td><a href="#f5">Cannot reattach to existing sync state after a container restart; recovery is a full reset that can resurrect deleted files</a></td><td><span class="sev med">Medium</span></td></tr>
+        <tr><td class="num">6</td><td><a href="#f6">Occasional missed remote-change notification delays sync until the next event (over 2 minutes once in 6 transfers)</a></td><td><span class="sev med">Medium</span></td></tr>
+        <tr><td class="num">7</td><td><a href="#f7">Downloaded files are made group read-only, defeating the recommended shared-group ACL setup</a></td><td><span class="sev low">Low</span></td></tr>
+        <tr><td class="num">8</td><td><a href="#f8">No way for the agent user to check daemon health or whether a file has synced</a></td><td><span class="sev low">Low</span></td></tr>
+        <tr><td class="num">9</td><td><a href="#f9">Every mount downloads the whole folder up front; restart cost grows with folder size</a></td><td><span class="sev low">Low</span></td></tr>
+        <tr><td class="num">10</td><td><a href="#f10">High log volume at default level (about 2 MB per daemon in 25 minutes on a 10-file folder)</a></td><td><span class="sev low">Low</span></td></tr>
+        <tr><td class="num">11</td><td><a href="#f11"><code>box-mount config</code> crashes with a traceback when stdin is not interactive</a></td><td><span class="sev low">Low</span></td></tr>
+        <tr><td class="num">12</td><td><a href="#f12">Credential-isolation guidance does not hold for bind-mounted files on Docker Desktop for Mac</a></td><td><span class="sev doc">Docs</span></td></tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<section>
+  <h2>Environment</h2>
+  <div class="table-wrap">
+    <table>
+      <tbody>
+        <tr><th>Binary</th><td><code>box-mount-0.6.0-linux-aarch64</code>, sha256 <code>ba39820b2bdfd10208e16416a50b0339d26d36cade34ead2afd4d0c33ecd4aaa</code> (bundles box-python-sdk 4.9.0, Python 3.12.14)</td></tr>
+        <tr><th>Host</th><td>macOS on Apple silicon, Docker Desktop (engine 29.8.2, arm64)</td></tr>
+        <tr><th>Sandboxes</th><td>Ubuntu 24.04 containers, linux/arm64. Five running at once, each with its own daemon, data directory and mount directory (Docker named volumes, not macOS bind mounts)</td></tr>
+        <tr><th>Auth</th><td>JWT, one service account shared by all five daemons, via <code>BOX_AUTH_TYPE=jwt</code> and <code>BOX_JWT_CONFIG_PATH</code></td></tr>
+        <tr><th>Box folder</th><td>ID <code>427251217536</code>, subfolders <code>Incoming/</code>, <code>Playbook/</code>, <code>Work/</code>, <code>Reviewed/</code>. About 10 files, all under 3 KB</td></tr>
+        <tr><th>Users</th><td>Daemon runs as <code>boxsvc</code>; agent worker runs as <code>agent</code>; shared group with setgid on <code>/mnt/box</code> and a default ACL, per the Box Mount guide</td></tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<section>
+  <h2>Measurements</h2>
+  <div class="figures">
+    <div class="figure"><b>1.4 s</b><span>Local write to HTTP 201 from upload.box.com</span></div>
+    <div class="figure"><b>3.7–4.7 s</b><span>Write in one sandbox to file present in another (5 of 6 transfers)</span></div>
+    <div class="figure"><b>&gt; 120 s</b><span>The sixth transfer: missed notification (finding 6)</span></div>
+    <div class="figure"><b>~8 s</b><span>Unmount and remount after a container restart, 10 small files</span></div>
+  </div>
+</section>
+
+<section>
+  <h2>Findings</h2>
+
+  <article class="finding" id="f1">
+    <header><span class="id">#1</span><h3>Re-created folder bound to the trashed Box folder after inode reuse</h3><span class="sev high">High</span></header>
+    <dl class="kv">
+      <dt>What happened</dt>
+      <dd>
+        <p>Sandbox A deleted <code>Work/INV-20417/</code>, which moved it to the Box trash. Sandbox B applied the delete locally. Later, B created a folder at the same path. ext4 handed it the same inode number as an earlier incarnation of that folder (<code>unix:65025:7563</code>), and the daemon treated it as the trashed Box folder <code>427439254984</code>.</p>
+        <p>Creating a subfolder inside it then failed with <code>Not Found</code>. The file written inside that subfolder was uploaded to the <strong>root of the mounted Box folder</strong> instead. A second variant: a local update to a file whose Box copy had been trashed retried <code>update_remote_file … Not Found</code> indefinitely and never fell back to creating the file.</p>
+      </dd>
+      <dt>Evidence</dt>
+      <dd>
+<pre><span class="dim"># sandbox B (sandbox-extractor), box-mount-sync.stderr.log</span>
+13:54:10 [LocalAdapter] READ.list_delta.change: side='local', change_type='create', item_type='folder',
+         inode_id='<span class="hl">unix:65025:7563</span>', name='INV-20417', local_path='Work/INV-20417'
+14:12:00 [BoxAdapter] READ.list_delta.change: side='remote', change_type='delete', raw_event_type='ITEM_TRASH',
+         item_type='folder', box_id='<span class="hl">427439254984</span>', name='INV-20417'
+14:12:47 [LocalAdapter] READ.list_delta.change: side='local', change_type='create', item_type='folder',
+         inode_id='<span class="hl">unix:65025:7563</span>', name='INV-20417', local_path='Work/INV-20417'
+14:12:47 POST https://api.box.com/2.0/folders {"name": "run-1014-141231", "parent": {"id": "<span class="hl">427439254984</span>"}}
+14:12:47 [bdlc.sync.engine] ERROR: Sync action failed: action=create_remote_folder item_type=folder
+         name=run-1014-141231 inode_id=unix:65025:7591 box_id=None message=Message: Not Found
+14:12:47 POST https://upload.box.com/api/2.0/files/content  attributes: {"name": "extraction.json",
+         "parent": {"id": "<span class="hl">427251217536</span>"} ...}      <span class="dim"># the mount root</span>
+14:12:49 [BoxAdapter] CREATE.create_file: local_path='/mnt/box/Work/INV-20417/run-1014-141231/extraction.json',
+         parent_box_id='<span class="hl">427251217536</span>', name='extraction.json'
+
+<span class="dim"># variant: update to a file whose Box copy is in the trash, retried every sync cycle</span>
+14:05:48 [BoxAdapter] UPDATE.update_file.start: box_id='2526288419633',
+         local_path='/mnt/box/Work/INV-20417/extraction.json'
+14:05:48 ERROR: Sync action failed: action=update_remote_file name=extraction.json box_id=None message=Message: Not Found
+14:06:49 ERROR: Sync action failed: action=update_remote_file name=extraction.json box_id=None message=Message: Not Found
+14:08:50 ERROR: Sync action failed: action=update_remote_file name=extraction.json box_id=None message=Message: Not Found</pre>
+      </dd>
+      <dt>Reproduce</dt>
+      <dd>
+        <ol>
+          <li>Mount the same Box folder in two sandboxes, A and B.</li>
+          <li>In B, create <code>X/</code> and a file inside it. Wait for both to sync.</li>
+          <li>In A, delete <code>X/</code>. Wait for B to apply the delete (see finding 4).</li>
+          <li>In B, create <code>X/</code> again, then <code>X/Y/</code> and a file inside <code>Y/</code>. On ext4 the inode number is often reused when nothing else has been created in between.</li>
+          <li>Observe <code>create_remote_folder … Not Found</code>, and the file uploaded to the mount root.</li>
+        </ol>
+      </dd>
+      <dt>Impact</dt>
+      <dd><p>Agent output is silently misplaced or never uploaded, while the agent's local view looks correct. Any delete, whether from an agent or from a person in the Box web app, can poison a later write in a different sandbox. Downstream agents waiting for the file wait forever.</p></dd>
+      <dt>Workaround</dt>
+      <dd><p>Nothing is deleted in the mount while sandboxes are running, and each run writes to a new, uniquely named folder. Between runs we wipe every sandbox's data and mount volumes, delete old outputs from one fresh sandbox, then start all sandboxes fresh.</p></dd>
+      <dt>Suggested fix</dt>
+      <dd><p>On applying a remote delete, drop the inode-to-Box-ID mapping for the item and its descendants even if the local item can't be resolved. Before reusing a mapping, confirm the inode's identity (for example inode plus creation time or generation number). On <code>Not Found</code> for a parent, re-resolve by path or recreate it rather than falling back to the mount root.</p></dd>
+    </dl>
+  </article>
+
+  <article class="finding" id="f2">
+    <header><span class="id">#2</span><h3>OAuth access token written to sync logs in plain text</h3><span class="sev high">High</span></header>
+    <dl class="kv">
+      <dt>What happened</dt>
+      <dd><p>The bundled Box SDK logs the full response of <code>POST /oauth2/token</code> at INFO, including the bearer <code>access_token</code> (valid about an hour). It appears in <code>logs/box-mount-sync.stderr.log</code> and in each per-run log, in all five sandboxes, at every token refresh.</p></dd>
+      <dt>Evidence</dt>
+      <dd>
+<pre>14:17:43 [boxsdk.network.default_network] INFO: "POST https://api.box.com/oauth2/token" 200 560
+{'access_token': '<span class="hl">[redacted for this report]</span>',
+ 'expires_in': 3766,
+ 'restricted_to': [],
+ 'token_type': 'bearer'}</pre>
+      </dd>
+      <dt>Impact</dt>
+      <dd><p>Anyone who can read the log directory can act as the service account until the token expires. Agent platforms commonly ship container logs to central logging, and support often asks for logs. In our setup only the daemon user can read the logs, but not every deployment will separate users.</p></dd>
+      <dt>Suggested fix</dt>
+      <dd><p>Redact token fields (<code>access_token</code>, <code>refresh_token</code>, JWT assertions, <code>client_secret</code>) in SDK network logging, or log request and response bodies only at DEBUG.</p></dd>
+    </dl>
+  </article>
+
+  <article class="finding" id="f3">
+    <header><span class="id">#3</span><h3>Endless conflict-copy loop after a near-simultaneous write from two sandboxes</h3><span class="sev high">High</span></header>
+    <dl class="kv">
+      <dt>What happened</dt>
+      <dd>
+        <p>Two sandboxes mounting the same folder each wrote <code>review_memo.md</code> into the same new folder within milliseconds: one wrote an empty file, the other the full content. That came from our own setup (one agent's two-step save split across two workers), and a conflict copy is the documented outcome.</p>
+        <p>The receiving daemon did not settle, though. It created <code>review_memo.conflict.local.&lt;timestamp&gt;.md</code>, uploaded it, and then created and uploaded another one every 2–3 seconds: 78 copies in about 4 minutes, each downloaded by every other mount, until we stopped that container. Both sandboxes also appear to have created the new parent folder independently: the two uploads name different parent folder IDs for the same path.</p>
+      </dd>
+      <dt>Evidence</dt>
+      <dd>
+<pre><span class="dim"># sandbox-booth-reviewer-b, 15 October 2026</span>
+14:05:47.499 [BoxAdapter] READ.list_delta.change: side='remote', change_type='create', raw_event_type='ITEM_UPLOAD',
+             box_id='2528444531345', parent_id='<span class="hl">427792947707</span>', name='review_memo.md'
+14:05:47.503 [LocalAdapter] READ.list_delta.change: side='local', change_type='create', item_type='file',
+             name='review_memo.md', local_path='Work/HALVORSEN-MSA/run-1015-140500/review_memo.md', <span class="hl">local_size=0</span>
+14:05:47.505 POST https://upload.box.com/api/2.0/files/content  {"name": "review_memo.md", "parent": {"id": "<span class="hl">427791249458</span>"}}
+14:05:48.673 [BoxAdapter] CREATE.create_file: local_path='/mnt/box/Work/HALVORSEN-MSA/run-1015-140500/review_memo.md'
+<span class="dim"># from 14:05:53, a new conflict copy every 2-3 s:</span>
+review_memo.conflict.local.20261015T140553Z.md
+review_memo.conflict.local.20261015T140556Z.md
+review_memo.conflict.local.20261015T140558Z.md   ... 78 in total</pre>
+      </dd>
+      <dt>Impact</dt>
+      <dd><p>A brief write collision becomes unbounded churn: the folder fills with copies, every mount downloads each one, and API usage climbs until someone intervenes.</p></dd>
+      <dt>Workaround</dt>
+      <dd><p>Exactly one writer sandbox per agent, so one agent's writes never land in two mounts.</p></dd>
+      <dt>Suggested fix</dt>
+      <dd><p>After writing a conflict copy, record the local version as resolved so the next cycle doesn't treat it as a new conflict. Rate-limit or cap conflict copies per path. When two mounts create the same new folder path at once, merge onto one Box folder rather than tracking two parents.</p></dd>
+    </dl>
+  </article>
+
+  <article class="finding" id="f4">
+    <header><span class="id">#4</span><h3>Remote folder deletes not fully applied locally</h3><span class="sev med">Medium</span></header>
+    <dl class="kv">
+      <dt>What happened</dt>
+      <dd><p>When a folder was trashed from another sandbox, receiving daemons logged failures deleting individual children locally. This is the precursor to finding 1: the stale mapping survives.</p></dd>
+      <dt>Evidence</dt>
+      <dd>
+<pre>14:05:20 [bdlc.sync.engine] ERROR: Sync action failed: action=delete_local_item item_type=file name=decision.md
+         box_id=2526291586898 message=Unable to resolve local item: unix:65025:7974
+14:15:32 [bdlc.sync.engine] ERROR: Sync action failed: action=delete_local_item item_type=file name=extraction.json
+         box_id=2526307206380 message=Unable to resolve local item: unix:65025:7586
+13:35:48 Sync action failed: action=delete_local_item item_type=file name=probe.txt box_id=2525137283373   <span class="dim"># sandbox-compliance-b</span></pre>
+      </dd>
+      <dt>Workaround</dt>
+      <dd><p>Same as finding 1: avoid deletes while sandboxes are running.</p></dd>
+    </dl>
+  </article>
+
+  <article class="finding" id="f5">
+    <header><span class="id">#5</span><h3>Cannot reattach to existing sync state after a container restart</h3><span class="sev med">Medium</span></header>
+    <dl class="kv">
+      <dt>What happened</dt>
+      <dd>
+        <p>We kept <code>~/.box-mount</code> in a persistent volume so a restarted container could resume. On restart, <code>box-mount mount</code> refused. <code>mount.json</code> still held the old daemon's PID, and in a new container that PID is often reused, frequently by the <code>mount</code> command itself.</p>
+        <p>Clearing <code>bdlc.pid</code> changed the message but still refused. The only path forward is <code>unmount</code>, which is a reset: it deletes <code>sync.sqlite3</code> and the next <code>mount</code> re-downloads everything.</p>
+        <p>The reset also "preserves unsynced edits". In our case that resurrected a file whose Box copy had been trashed (the stuck file from finding 1), which then re-uploaded and synced back into every other sandbox.</p>
+      </dd>
+      <dt>Evidence</dt>
+      <dd>
+<pre>$ box-mount --data-path /home/boxsvc/.box-mount mount /mnt/box 427251217536
+Mount already exists at /mnt/box.
+/mnt/box | box_folder_id=427251217536 | pid=18 | status=stopped
+
+<span class="dim"># after removing data/bdlc.pid, or pointing the pid at a dead process</span>
+A previous mount existed at /mnt/box. Run 'box-mount unmount /mnt/box' before creating a new mount.
+
+$ box-mount --data-path /home/boxsvc/.box-mount unmount /mnt/box
+Reset: preserving unsynced edits and clearing synced entries in /mnt/box
+Reset: deleting sync database at /home/boxsvc/.box-mount/data/sync.sqlite3
+Unmounting /mnt/box ...
+Unmounted /mnt/box.</pre>
+      </dd>
+      <dt>Impact</dt>
+      <dd><p>Sandboxes are routinely restarted or rescheduled. Each restart costs a full re-download (finding 9), and the reset can bring back content that was deleted remotely.</p></dd>
+      <dt>Workaround</dt>
+      <dd><p>The container entrypoint runs <code>unmount</code> then <code>mount</code> whenever <code>mount.json</code> exists (about 8 seconds for our folder). For the crash demo we kill only the agent worker process, never the container running the daemon.</p></dd>
+      <dt>Suggested fix</dt>
+      <dd><p>Treat a recorded PID as live only if it is a running <code>box-mount sync</code> process (check its command line or a lock file), and otherwise resume from the existing sync database. A <code>mount --resume</code> option would also work. During a reset, drop local items whose Box copy is trashed rather than re-uploading them.</p></dd>
+    </dl>
+  </article>
+
+  <article class="finding" id="f6">
+    <header><span class="id">#6</span><h3>Occasional missed remote-change notification</h3><span class="sev med">Medium</span></header>
+    <dl class="kv">
+      <dt>What happened</dt>
+      <dd><p>We timed six small-file transfers between two sandboxes. Five arrived in 3.7–4.7 seconds. In the sixth, the receiving daemon never got the change notification. The file arrived over two minutes later, only when the next transfer's notification triggered a delta listing that picked up both.</p></dd>
+      <dt>Evidence</dt>
+      <dd>
+<pre><span class="dim"># sender (sandbox-compliance)</span>
+13:14:53 [BoxAdapter] CREATE.create_file: local_path='/mnt/box/Work/_latency/compliance-to-extractor-5.txt'
+<span class="dim"># receiver (sandbox-extractor): nothing for #5 until #6's event arrives</span>
+13:17:01 [BoxAdapter] READ.list_delta.change: index=1, side='remote', change_type='create', raw_event_type='ITEM_UPLOAD' ...
+13:17:01 [BoxAdapter] READ.list_delta.change: index=2, side='remote', change_type='create', raw_event_type='ITEM_UPLOAD' ...
+13:17:02 [LocalAdapter] CREATE_OR_UPDATE.write_file: target='/mnt/box/Work/_latency/compliance-to-extractor-5.txt'
+13:17:02 [LocalAdapter] CREATE_OR_UPDATE.write_file: target='/mnt/box/Work/_latency/compliance-to-extractor-6.txt'
+
+<span class="dim"># startup line on every daemon</span>
+ALF poller, local watch, retry scheduler, and remote poll (0s) running.</pre>
+      </dd>
+      <dt>Workaround</dt>
+      <dd><p>A daemon re-lists remote changes about half a second after its own upload echoes back (<code>skip_own_write_echo</code>, then <code>list_delta.complete</code>). When an agent is waiting for a file that hasn't arrived, it writes a small "pulse" file to <code>_sync/</code>, which forces its own daemon to catch up.</p></dd>
+      <dt>Suggested fix</dt>
+      <dd><p>A periodic remote delta poll as a fallback (the log shows <code>remote poll (0s)</code>; a configurable interval of 15 to 60 seconds would bound the delay). A <code>box-mount sync --now</code> command, safe to run beside the daemon, would also help.</p></dd>
+    </dl>
+  </article>
+
+  <article class="finding" id="f7">
+    <header><span class="id">#7</span><h3>Downloaded files are made group read-only</h3><span class="sev low">Low</span></header>
+    <dl class="kv">
+      <dt>What happened</dt>
+      <dd><p>Following the guide's credential-isolation pattern (daemon user, agent user, shared group, setgid directory, default ACL), files the daemon downloads arrive as <code>-rw-r--r--</code>. That sets the ACL mask to <code>r--</code>, so the agent can read them but not update them. Folders the daemon creates are <code>drwxr-sr-x</code>.</p></dd>
+      <dt>Evidence</dt>
+      <dd>
+<pre>$ getfacl Work/_latency/compliance-to-extractor-4.txt
+user::rw-
+group::rwx              #effective:r--
+group:boxmount:rwx      #effective:r--
+mask::r--
+$ su agent -c 'echo x &gt;&gt; Work/_latency/compliance-to-extractor-4.txt'
+sh: 1: cannot create ...: Permission denied</pre>
+      </dd>
+      <dt>Workaround</dt>
+      <dd><p>The entrypoint re-applies the group ACL to folders. Our filesystem layer falls back to write-then-rename when updating a downloaded file, which loses Box version history for that file (as the guide notes for atomic saves).</p></dd>
+      <dt>Suggested fix</dt>
+      <dd><p>Honour the parent directory's default ACL and the process umask when creating downloaded files, or offer a file-mode setting.</p></dd>
+    </dl>
+  </article>
+
+  <article class="finding" id="f8">
+    <header><span class="id">#8</span><h3>No health or sync-state interface for the agent user</h3><span class="sev low">Low</span></header>
+    <dl class="kv">
+      <dt>What happened</dt>
+      <dd><p>With the daemon and agent separated as recommended, the agent cannot run <code>box-mount status</code>, because the state directory is private to the daemon user. Neither user can ask whether a particular local file has finished uploading, or whether a remote version has arrived.</p></dd>
+      <dt>Workaround</dt>
+      <dd><p>A root supervisor writes <code>box-mount status</code> output to a world-readable file every two seconds, and agents refuse to write while it is stale or not <code>running</code>. Handoffs compare content checksums and poll until the expected version is present.</p></dd>
+      <dt>Suggested fix</dt>
+      <dd><p>A read-only status file or socket readable by the mount's group, ideally with per-path sync state (pending upload, synced, conflict, error).</p></dd>
+    </dl>
+  </article>
+
+  <article class="finding" id="f9">
+    <header><span class="id">#9</span><h3>Whole-folder download on every mount</h3><span class="sev low">Low</span></header>
+    <dl class="kv">
+      <dt>What happened</dt>
+      <dd><p>Each mount downloads the entire folder, and every new file syncs to every mount whether or not anything reads it. With five sandboxes the folder is downloaded five times at startup, and again on each restart (finding 5). We saw no on-demand or lazy option in the CLI or the guide.</p></dd>
+      <dt>Question</dt>
+      <dd><p>Is an on-demand mode planned, or a way to exclude subfolders from a mount? Until then, the guidance we'd suggest is to mount the narrowest folder each agent needs.</p></dd>
+    </dl>
+  </article>
+
+  <article class="finding" id="f10">
+    <header><span class="id">#10</span><h3>High log volume at the default level</h3><span class="sev low">Low</span></header>
+    <dl class="kv">
+      <dt>What happened</dt>
+      <dd><p>The SDK logs full request and response bodies and event payloads as multi-line dumps at INFO. On a 10-file folder, each daemon wrote 12,900–15,500 lines (1.9–2.3 MB) of <code>stderr.log</code> in about 25 minutes. The same content is duplicated in per-run log files. Finding real errors means filtering through this.</p></dd>
+      <dt>Suggested fix</dt>
+      <dd><p>A log-level setting, and SDK network bodies at DEBUG. This also addresses finding 2.</p></dd>
+    </dl>
+  </article>
+
+  <article class="finding" id="f11">
+    <header><span class="id">#11</span><h3><code>box-mount config</code> crashes without an interactive terminal</h3><span class="sev low">Low</span></header>
+    <dl class="kv">
+      <dt>What happened</dt>
+      <dd><p>Running <code>config</code> with stdin closed loops on the prompt, then exits with an <code>EOFError</code> traceback. Environment variables work for non-interactive setup, so this matters mainly for automation that probes the CLI.</p></dd>
+      <dt>Evidence</dt>
+<dd><pre>Authentication type (oauth, jwt) [oauth]:
+Configuring OAuth mode.
+Client ID: Client ID is required.
+...
+  File "bdlc/auth_setup_cli.py", line 35, in _prompt_value
+EOFError: EOF when reading a line
+[PYI-13:ERROR] Failed to execute script 'cli' due to unhandled exception!</pre></dd>
+      <dt>Suggested fix</dt>
+      <dd><p>Detect a non-TTY and exit with a message pointing to the <code>BOX_*</code> environment variables, or accept flags.</p></dd>
+    </dl>
+  </article>
+
+  <article class="finding" id="f12">
+    <header><span class="id">#12</span><h3>Credential isolation on Docker Desktop for Mac</h3><span class="sev doc">Docs</span></header>
+    <dl class="kv">
+      <dt>What happened</dt>
+      <dd><p>The guide recommends <code>chmod 600</code> on the JWT file, owned by the daemon user. We first bind-mounted the JWT JSON from the Mac into the container. Inside the container it showed as <code>-rw------- root</code>, but the unprivileged agent user could still read it, because Docker Desktop's macOS file sharing does not enforce Linux permissions.</p></dd>
+      <dt>Workaround</dt>
+      <dd><p>The key is copied into each sandbox's Docker named volume (real ext4 permissions) before start, and never bind-mounted.</p></dd>
+      <dt>Suggested docs change</dt>
+      <dd><p>Note that file permissions only isolate credentials on a filesystem that enforces them, and recommend secrets stores or copying into the sandbox's own filesystem for Docker Desktop and similar setups.</p></dd>
+    </dl>
+  </article>
+</section>
+
+<section>
+  <h2>What worked well</h2>
+  <ul class="prose">
+    <li><span class="sev ok">Good</span> No FUSE and no privileged container. A plain directory meant ordinary file tools and our own filesystem layer worked unchanged.</li>
+    <li><span class="sev ok">Good</span> Fast uploads (about 1.4 s) and typical cross-sandbox propagation of about 4 s.</li>
+    <li><span class="sev ok">Good</span> Five daemons on one service account and one folder ran together without conflicts or rate-limit errors in our tests.</li>
+    <li><span class="sev ok">Good</span> Own-write echo suppression (<code>skip_own_write_echo</code>) worked as expected, and gave us a reliable way to force a remote catch-up.</li>
+    <li><span class="sev ok">Good</span> JWT setup through environment variables was simple, and <code>status</code> output is easy to parse.</li>
+  </ul>
+</section>
+
+<section>
+  <h2>Requests, in priority order</h2>
+  <ol class="prose">
+    <li>Fix the inode-reuse binding and the root-folder fallback (finding 1).</li>
+    <li>Redact tokens from logs (finding 2).</li>
+    <li>Stop the conflict-copy loop (finding 3).</li>
+    <li>Resume from existing sync state after a restart (finding 5).</li>
+    <li>A fallback remote poll, or a safe sync-now command (finding 6).</li>
+    <li>A group-readable status interface with per-path sync state (finding 8).</li>
+    <li>File modes that respect default ACLs (finding 7), and a log-level setting (finding 10).</li>
+    <li>Guidance on on-demand downloads or subfolder exclusion (finding 9).</li>
+  </ol>
+</section>
+
+<section>
+  <h2>How the demo uses Box Mount</h2>
+  <div class="prose stack">
+    <p>Four agents process a vendor packet: an extractor, a compliance checker (two sandboxes, for failover), a contract reviewer and a coordinator. Each runs in its own Linux sandbox with its own box-mount daemon over the same Box folder. Temporal orchestrates them, and each agent's file operations run as Temporal activities inside its own sandbox.</p>
+    <p>Agents hand work to each other only through Box. The writer reports a checksum, and the reader waits until that exact version has synced into its own mount. This is why sync delays and misplaced files surfaced so clearly: every handoff checks that the file arrived intact. The checksums let Temporal wait out ordinary delays safely; findings 1 and 5 are the cases where waiting alone was not enough.</p>
+  </div>
+  <p class="callout">Happy to share full logs for any timestamp above, the container setup, or a minimal reproduction for finding 1.</p>
+</section>
+
+<footer>Box Mount 0.6.0 private preview · Temporal Agent Harness at commit 091c875 · Report generated 14 October 2026</footer>
+</main>

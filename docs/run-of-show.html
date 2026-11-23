@@ -1,0 +1,266 @@
+<title>Box Relay Run of Show</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Instrument+Sans:ital,wght@0,400;0,500;0,600;0,700;1,400&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: one working column for the demo (read it on a laptop beside the demo), steps as numbered rows, commands as copyable chips. */
+:root {
+  --bg: #f4f6f6;
+  --paper: #ffffff;
+  --ink: #142023;
+  --muted: #55666a;
+  --rule: #d6dedf;
+  --accent: #0b6e6e;
+  --accent-soft: #e2f0ef;
+  --code: #eaf0f0;
+  --see: #2f6a3b;
+  --see-bg: #e6f2e8;
+  --warn: #8a4b00;
+  --warn-bg: #fbeedb;
+  --say: #3e4a8c;
+  --say-bg: #eceefa;
+  --sans: "Instrument Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --mono: "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0f1617; --paper: #152022; --ink: #e2eaeb; --muted: #97a8ab; --rule: #27363a;
+    --accent: #5fc3bf; --accent-soft: #163434; --code: #1b2a2d;
+    --see: #9ad3a6; --see-bg: #19301f; --warn: #f0bf7d; --warn-bg: #352812; --say: #b3bbf2; --say-bg: #1f2340;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #0f1617; --paper: #152022; --ink: #e2eaeb; --muted: #97a8ab; --rule: #27363a;
+  --accent: #5fc3bf; --accent-soft: #163434; --code: #1b2a2d;
+  --see: #9ad3a6; --see-bg: #19301f; --warn: #f0bf7d; --warn-bg: #352812; --say: #b3bbf2; --say-bg: #1f2340;
+  color-scheme: dark;
+}
+body { background: var(--bg); color: var(--ink); font: 400 16px/1.6 var(--sans); }
+.page { max-width: 900px; margin: 0 auto; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); padding-block: 36px 72px; display: grid; gap: 40px; }
+h1, h2, h3 { margin: 0; line-height: 1.15; text-wrap: balance; }
+h1 { font-size: clamp(30px, 5vw, 42px); font-weight: 700; letter-spacing: -0.015em; }
+h2 { font-size: 23px; font-weight: 700; display: flex; align-items: baseline; gap: 12px; flex-wrap: wrap; }
+h2 .when { font: 500 12px/1 var(--mono); letter-spacing: 0.06em; text-transform: uppercase; color: var(--accent); }
+h3 { font-size: 17px; font-weight: 600; }
+p { margin: 0; }
+a { color: var(--accent); }
+a:focus-visible, button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+section { display: grid; gap: 16px; }
+.lede { font-size: 18px; max-width: 64ch; }
+.eyebrow { font: 500 12px/1 var(--mono); letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); }
+.prose { max-width: 68ch; display: grid; gap: 10px; }
+code { font-family: var(--mono); font-size: 0.88em; background: var(--code); padding: 1px 5px; border-radius: 3px; overflow-wrap: anywhere; }
+ul, ol { margin: 0; padding-left: 1.2em; display: grid; gap: 6px; }
+
+.facts { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; }
+.fact { background: var(--paper); border: 1px solid var(--rule); border-radius: 6px; padding: 10px 14px; display: grid; gap: 2px; }
+.fact b { font-size: 20px; font-weight: 700; font-variant-numeric: tabular-nums; }
+.fact span { font-size: 13px; color: var(--muted); }
+
+.table-wrap { overflow-x: auto; background: var(--paper); border: 1px solid var(--rule); border-radius: 6px; }
+table { border-collapse: collapse; width: 100%; font-size: 14.5px; }
+th, td { text-align: left; vertical-align: top; padding: 9px 12px; border-bottom: 1px solid var(--rule); }
+th { font-size: 12px; font-weight: 600; letter-spacing: 0.05em; text-transform: uppercase; color: var(--muted); background: var(--code); }
+tr:last-child td { border-bottom: 0; }
+td:first-child { font-weight: 600; white-space: nowrap; }
+
+.steps { list-style: none; padding: 0; display: grid; gap: 12px; counter-reset: step; }
+.step { counter-increment: step; display: grid; grid-template-columns: 34px 1fr; gap: 4px 14px; background: var(--paper); border: 1px solid var(--rule); border-radius: 6px; padding: 14px 16px; }
+.step::before { content: counter(step); font: 700 15px/1 var(--sans); color: var(--accent); background: var(--accent-soft); border-radius: 50%; width: 30px; height: 30px; display: grid; place-items: center; grid-row: 1 / span 3; }
+.step > * { min-width: 0; }
+.step .what { color: var(--muted); font-size: 14.5px; }
+
+.cmd { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.cmd code { font-size: 14px; padding: 5px 9px; background: var(--code); border: 1px solid var(--rule); }
+.cmd .term { font: 500 11px/1 var(--mono); letter-spacing: 0.06em; text-transform: uppercase; color: var(--muted); }
+button.copy { font: 500 12px/1 var(--sans); color: var(--accent); background: transparent; border: 1px solid var(--rule); border-radius: 4px; padding: 5px 8px; cursor: pointer; }
+button.copy:hover { background: var(--accent-soft); }
+
+.tag { display: inline-block; font: 600 11px/1 var(--mono); letter-spacing: 0.05em; text-transform: uppercase; padding: 4px 7px; border-radius: 3px; margin-right: 6px; white-space: nowrap; }
+.tag.see { color: var(--see); background: var(--see-bg); }
+.tag.say { color: var(--say); background: var(--say-bg); }
+.tag.warn { color: var(--warn); background: var(--warn-bg); }
+.line { display: block; }
+.line + .line { margin-top: 6px; }
+
+.layout { display: grid; grid-template-columns: 1.15fr 1fr; grid-template-rows: auto auto; gap: 8px; }
+.pane { background: var(--paper); border: 1px solid var(--rule); border-radius: 6px; padding: 12px 14px; display: grid; gap: 4px; min-width: 0; }
+.pane b { font-size: 14px; }
+.pane span { font-size: 13px; color: var(--muted); }
+.pane.wide { grid-column: 1 / -1; }
+@media (max-width: 620px) { .layout { grid-template-columns: 1fr; } }
+
+.beat { background: var(--paper); border: 1px solid var(--rule); border-radius: 6px; padding: 16px 18px; display: grid; gap: 10px; }
+.beat header { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; }
+.beat .time { font: 500 12px/1 var(--mono); color: var(--muted); }
+.beat .optional { font: 600 11px/1 var(--mono); letter-spacing: 0.05em; text-transform: uppercase; color: var(--accent); background: var(--accent-soft); padding: 4px 7px; border-radius: 3px; }
+.callout { border-left: 3px solid var(--warn); padding: 4px 0 4px 14px; max-width: 68ch; }
+footer { color: var(--muted); font-size: 13px; border-top: 1px solid var(--rule); padding-top: 14px; }
+@media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+</style>
+
+<main class="page">
+
+<header style="display:grid;gap:12px">
+  <p class="eyebrow">Temporal Agent Kit × Box Mount</p>
+  <h1>Box Relay Run of Show</h1>
+  <p class="lede">Two AI agents, each in its own Linux sandbox with its own Box folder, hand a contract review to each other through Box. A coordinator with no model pins every file version, checks between steps that nothing changed, and asks a person when something did. Temporal makes every handoff, wait and crash durable. This page covers start-up, what each piece does, and how to run the demo.</p>
+  <div class="facts">
+    <div class="fact"><b>~90 s</b><span>"go" to approval card</span></div>
+    <div class="fact"><b>~10 s</b><span>File crossing sandboxes via Box</span></div>
+    <div class="fact"><b>~6 s</b><span>Crash to resumed model call</span></div>
+    <div class="fact"><b>10 min</b><span>Idle sessions close themselves</span></div>
+  </div>
+</header>
+
+<section>
+  <h2>What each piece does</h2>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>Piece</th><th>Runs where</th><th>What it does</th></tr></thead>
+      <tbody>
+        <tr><td>Temporal dev server</td><td>your Mac · :7233, UI :8233</td><td>Records every step of every agent, so work survives crashes and waits. The Temporal UI shows each agent's history and status line.</td></tr>
+        <tr><td>Session-manager worker</td><td>your Mac</td><td>Runs the Agent Kit's session-manager workflow, which keeps the list of chat sessions and starts new ones.</td></tr>
+        <tr><td>Agent Kit UI server</td><td>your Mac · :8000</td><td>The UI where you type and approve. It offers one agent: Box Relay.</td></tr>
+        <tr><td><code>sandbox-coordinator</code></td><td>Docker</td><td>The coordinator: a scripted workflow (no AI model). It runs the two agents in order, pins each file version through the Box API, checks between steps that none changed, runs the supplier check and the Databricks steps, and asks a person to approve publishing. No Box Mount: it never holds file content.</td></tr>
+        <tr><td><code>sandbox-extractor</code></td><td>Docker</td><td>AI agent 1. Its Box Mount syncs only <code>Extraction/</code>. Reads the contract PDF and writes <code>extraction.json</code>: every clause verbatim plus the key terms.</td></tr>
+        <tr><td><code>sandbox-reviewer</code></td><td>Docker</td><td>AI agent 2. Its Box Mount syncs only <code>Review/</code>, so it never sees the PDF. Reviews the contract from the copied <code>extraction.json</code> against the playbook and writes <code>review_memo.md</code> and <code>review_findings.json</code>.</td></tr>
+        <tr><td>Box folders</td><td>Box</td><td><code>Extraction/</code> (contract, extraction), <code>Review/</code> (playbook, copied extraction, memo, findings), <code>Reviewed/</code> (approved memos). The coordinator copies the exact extraction version from one agent's folder to the other's.</td></tr>
+        <tr><td>Ticker (<code>just ticker</code>)</td><td>a terminal</td><td>One line per file crossing between sandboxes, including the coordinator's Box API copies, with how long Box took.</td></tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<section>
+  <h2>Before the event <span class="when">day before or morning of</span></h2>
+  <ol class="steps">
+    <li class="step">
+      <h3>Docker Desktop running, Box and OpenAI keys in place</h3>
+      <p class="what"><code>secrets/box-jwt-config.json</code>, <code>.env</code> (Box folder IDs) and <code>.env.local</code> (OpenAI key) are already set up. Make sure you're signed in to Box in the browser you'll present from. First time ever: run <code>just setup</code>.</p>
+    </li>
+    <li class="step">
+      <h3>Start the stack (next section), then reset the folders</h3>
+      <div class="cmd"><code>just reset</code><button class="copy" type="button" data-copy="cd ~/box-mount-agent-demo && just reset">Copy</button></div>
+      <p class="what">About a minute. Clears old runs and published memos and restores the contract and playbook. Never delete files in the Box folders by hand while the sandboxes run (a Box Mount bug can strand later files).</p>
+    </li>
+    <li class="step">
+      <h3>Do one full rehearsal run</h3>
+      <p class="what">Run the core demo and the add-ons once, end to end, on the network you'll present on.</p>
+    </li>
+  </ol>
+</section>
+
+<section>
+  <h2>Start-up</h2>
+  <div class="beat">
+    <header><h3>One command</h3><span class="time">~90 s to ready</span></header>
+    <div class="cmd"><code>just launch</code><button class="copy" type="button" data-copy="cd ~/box-mount-agent-demo && just launch">Copy</button></div>
+    <span class="line">Opens one Ghostty window with six titled tabs (Temporal, Session manager, Sandboxes, Agent Kit UI, Ticker, Crash), starts each in the right order, and opens the Agent Kit UI, Temporal UI, Box folder and, last, the architecture diagram in your browser once every worker is polling. <code>just launch dry</code> opens the tabs but only prints the commands. The first run asks macOS for permission to control Ghostty: allow it.</span>
+  </div>
+  <p class="prose">By hand, from <code>~/box-mount-agent-demo</code>, one terminal each:</p>
+  <ol class="steps">
+    <li class="step"><h3>Temporal</h3><div class="cmd"><span class="term">Terminal 1</span><code>just temporal</code><button class="copy" type="button" data-copy="cd ~/box-mount-agent-demo && just temporal">Copy</button></div><p class="what"><span class="tag see">You see</span>the dev server start with its Web UI at http://localhost:8233.</p></li>
+    <li class="step"><h3>Session-manager worker</h3><div class="cmd"><span class="term">Terminal 2</span><code>just session-manager</code><button class="copy" type="button" data-copy="cd ~/box-mount-agent-demo && just session-manager">Copy</button></div><p class="what"><span class="tag see">You see</span><code>Session manager worker ready: taskQueue='session-manager'</code></p></li>
+    <li class="step"><h3>The three sandboxes</h3><div class="cmd"><span class="term">Terminal 3</span><code>just up</code><button class="copy" type="button" data-copy="cd ~/box-mount-agent-demo && just up">Copy</button></div><p class="what"><span class="tag see">You see</span>after about a minute, <code>just status</code> shows <code>no Box Mount (Box API)</code> for the coordinator and <code>box-mount=running</code> for the two agents, all with <code>worker=up</code>. Keep this terminal for <code>just crash</code> later.</p></li>
+    <li class="step"><h3>Agent Kit UI</h3><div class="cmd"><span class="term">Terminal 4</span><code>just server</code><button class="copy" type="button" data-copy="cd ~/box-mount-agent-demo && just server">Copy</button></div><p class="what"><span class="tag see">You see</span><code>Uvicorn running on http://127.0.0.1:8000</code>.</p></li>
+    <li class="step"><h3>Ticker</h3><div class="cmd"><span class="term">Terminal 5</span><code>just ticker</code><button class="copy" type="button" data-copy="cd ~/box-mount-agent-demo && just ticker">Copy</button></div><p class="what"><span class="tag see">You see</span><code>Box Mount ticker: …</code>, then quiet until files move.</p></li>
+  </ol>
+</section>
+
+<section>
+  <h2>Screen layout</h2>
+  <div class="layout">
+    <div class="pane"><b>Agent Kit UI</b><span><a href="http://localhost:8000">http://localhost:8000</a>: chat, subagent cards, approval cards, and the state pane with every pinned file version.</span></div>
+    <div class="pane"><b>Box web app</b><span>Open at the demo folder (<code>DEMO_BOX_FOLDER_ID</code>; <code>just launch</code> opens it) (<code>Extraction/</code>, <code>Review/</code>, <code>Reviewed/</code>).</span></div>
+    <div class="pane wide"><b>Ticker terminal</b><span>Along the bottom: <code>↑ uploaded</code>, <code>⇢ COPY</code> (the coordinator's Box API copy), <code>↓ downloaded … via Box</code>.</span></div>
+    <div class="pane wide"><b>Second browser tab: Temporal UI</b><span><a href="http://localhost:8233">http://localhost:8233</a>. Workflows are named <code>box-relay-…</code>, <code>extractor-subagent-…</code>, <code>reviewer-subagent-…</code>; each shows a <em>Current Details</em> status line.</span></div>
+  </div>
+</section>
+
+<section>
+  <h2>The demo</h2>
+  <p class="prose">Open the Agent Kit UI, click <strong>New session</strong> and choose <strong>Box Relay</strong>. The UI doesn't start a session on its own.</p>
+
+  <article class="beat">
+    <header><h3>Open with one line</h3><span class="time">10 s</span></header>
+    <span class="line"><span class="tag say">Say</span>"Two AI agents, each in its own sandbox with its own Box folder. They never talk to each other. A coordinator written in code, with no model, hands files between them through Box and checks every version. Temporal makes all of it durable, and a person approves what goes out."</span>
+  </article>
+
+  <article class="beat">
+    <header><h3>Run it</h3><span class="time">~90 s</span></header>
+    <span class="line"><span class="tag">Do</span>Type <code>go</code> and press Enter.</span>
+    <span class="line"><span class="tag see">They see</span>The Extractor reads the contract in its sandbox. In the ticker: <code>↑ sandbox-extractor uploaded Extraction/…/extraction.json</code>, then <code>⇢ sandbox-coordinator COPY … -&gt; Review/…/extraction.json</code>, then <code>↓ sandbox-reviewer downloaded Review/…</code>. The supplier check (ERP and sanctions) and spend lookup run in between. The Reviewer writes its memo.</span>
+    <span class="line"><span class="tag say">Say</span>"The Reviewer's sandbox never gets the PDF, and the coordinator never gets any file at all. It sees versions and hashes through the Box API, and copied that exact version of the extraction across, on the Box side."</span>
+    <span class="line"><span class="tag">Optional</span>Run <code>just flaky on</code> first: the ERP lookup times out twice and the Temporal UI shows the retries.</span>
+  </article>
+
+  <article class="beat">
+    <header><h3>Human in the loop: approve publishing</h3><span class="time">~20 s</span></header>
+    <span class="line"><span class="tag see">They see</span>The chat says <strong>Review ready for approval</strong> with a link to the memo in Box, and a <code>publish_memo_to_reviewed_folder</code> card that lists every version checked.</span>
+    <span class="line"><span class="tag">Do</span>Click the link to show the memo in Box. Then show the Temporal tab: the coordinator's status line says it's waiting for a person.</span>
+    <span class="line"><span class="tag say">Say</span>"Nothing is running while it waits. It could wait an hour or survive a restart. And what gets published is exactly the version I'm looking at."</span>
+    <span class="line"><span class="tag">Do</span>Click <strong>Approve</strong>. The memo appears in <code>Reviewed/</code> and the chat links it. (<strong>Reject</strong> leaves it in the Reviewer's <code>Work/</code>.)</span>
+  </article>
+
+  <article class="beat">
+    <header><h3>A file changes mid-run</h3><span class="optional">Add-on</span><span class="time">~30 s</span></header>
+    <span class="line"><span class="tag">Do</span>Type <code>go</code>. While the Extractor works, edit <code>Review/Playbook/playbook.md</code> in Box (or upload a new version of the contract in <code>Extraction/Incoming/</code>).</span>
+    <span class="line"><span class="tag see">They see</span>After the step, a <code>continue_with_changed_file</code> card: the file, both versions, who changed it, and what continuing would redo.</span>
+    <span class="line"><span class="tag say">Say</span>"Between every step the coordinator asks Box whether anything it relies on changed. When something did, it doesn't guess. It stops and asks, and Temporal holds the run until someone answers."</span>
+  </article>
+
+  <article class="beat">
+    <header><h3>People edit in Box</h3><span class="optional">Add-on A</span><span class="time">~45 s</span></header>
+    <span class="line"><span class="tag">Do</span>After a run, type <code>re-review</code>. The status line says it's waiting for an edit to the playbook in Box.</span>
+    <span class="line"><span class="tag">Do</span>In Box, open <code>Review/Playbook/playbook.md</code> and change the payment-terms row to <code>Net 45; Net 15 is approved for Halvorsen | Shorter than Net 15</code>.</span>
+    <span class="line"><span class="tag see">They see</span>The coordinator pins the new version, the ticker shows it reaching the Reviewer's sandbox, and the Reviewer writes <code>review_memo_v2.md</code>, now marking payment terms OK. The approval card returns.</span>
+    <span class="line"><span class="tag say">Say</span>"People and agents work in the same Box files. Legal changed a rule in Box; the agent picked up that exact version."</span>
+  </article>
+
+  <article class="beat">
+    <header><h3>Crash and resume</h3><span class="optional">Add-on B</span><span class="time">+6 s</span></header>
+    <span class="line"><span class="tag">Do</span>Type <code>go</code>, then in Terminal 3 (or the Crash tab) run <code>just crash reviewer</code>. It waits for the Reviewer's model call, then kills the worker with <code>kill -9</code>.</span>
+    <span class="line"><span class="tag see">They see</span><code>killed …@sandbox-reviewer (kill -9) during invoke_model_activity…</code>. The sandbox restarts the worker in a second; about 6 s later the Temporal UI shows the same model call running again as attempt 2 under a new worker PID. The memo still lands once.</span>
+    <span class="line"><span class="tag say">Say</span>"The process died mid-thought. Temporal resumed the exact step, and nothing it had already written to Box was redone."</span>
+  </article>
+</section>
+
+<section>
+  <h2>Between runs</h2>
+  <ul class="prose">
+    <li>Type <code>go</code> again in the same session: every run gets its own <code>Work/HALVORSEN-MSA/&lt;run&gt;/</code> folder, so nothing collides.</li>
+    <li>If you edited the playbook, run <code>just playbook-reset</code> (a few seconds) to put the original back. Box keeps the edited one in version history.</li>
+    <li>Sessions close themselves after 10 minutes with no messages. A closed session says so; click <strong>New session</strong>.</li>
+  </ul>
+</section>
+
+<section>
+  <h2>If something goes wrong</h2>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>Symptom</th><th>Fix</th></tr></thead>
+      <tbody>
+        <tr><td><code>worker=DOWN</code> in <code>just status</code></td><td>Temporal isn't running or just restarted: check Terminal 1. Workers reconnect on their own within seconds.</td></tr>
+        <tr><td>"No worker available" when starting a session</td><td>The workers aren't polling yet. Wait for <code>just status</code> to show <code>worker=up</code> three times, then click <strong>New session</strong>.</td></tr>
+        <tr><td>UI shows an error or can't create a session</td><td>Restart <code>just server</code> (Ctrl-C, run again).</td></tr>
+        <tr><td>Approval card doesn't appear</td><td>Reload the page; the workflow is still waiting.</td></tr>
+        <tr><td>Nothing in the ticker</td><td>Restart <code>just ticker</code>; check <code>just status</code>.</td></tr>
+        <tr><td>"This agent is closed"</td><td>It idled out. Click <strong>New session</strong>.</td></tr>
+        <tr><td>Folders getting long, or a run looks stuck on sync</td><td><code>just reset</code> (~1 min) between sessions.</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <p class="callout"><span class="tag warn">Don't</span>terminate <code>session-manager</code> in the Temporal UI (it ends every session), and don't delete files in the Box folders while the sandboxes run.</p>
+</section>
+
+<section>
+  <h2>Shut down</h2>
+  <p class="prose">One command ends every workflow, stops Temporal, the session manager, the UI, the ticker and the sandboxes, and closes the Ghostty window:</p>
+  <div class="cmd"><code>just stop</code><button class="copy" type="button" data-copy="cd ~/box-mount-agent-demo && just stop">Copy</button></div>
+</section>
+
+<footer>Box Relay · ~/box-mount-agent-demo · Agent Kit streaming on · reasoning effort <code>low</code> · details in README.md</footer>
+</main>

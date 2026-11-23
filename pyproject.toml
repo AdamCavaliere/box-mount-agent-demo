@@ -1,0 +1,22 @@
+[project]
+name = "box-mount-agent-demo"
+version = "0.1.0"
+description = "Box Relay: two agents on the Temporal Agent Kit hand a contract review to each other through Box Mount"
+requires-python = ">=3.12"
+dependencies = [
+    "temporal-agent-kit[ui,code-mode,openai-agents]==0.12.1",
+    "temporalio>=1.35.0",
+    "pypdf>=5.0",
+    "databricks-sdk==0.169.0",
+    "box-sdk-gen==1.17.0",
+]
+
+[dependency-groups]
+# Only for generating the demo's seed PDFs on the host.
+seed = ["reportlab>=4.2"]
+
+[tool.uv]
+package = false
+# Match the Agent Kit's own lockfile: its OpenAI streaming observer breaks on newer
+# openai SDK event shapes ("'ResponseFunctionCallArgumentsDoneEvent' object has no attribute 'name'").
+constraint-dependencies = ["openai==3.8.0", "openai-agents==0.22.0", "pydantic==2.13.4"]

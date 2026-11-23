@@ -1,0 +1,66 @@
+# Box Relay: three sandboxes, one per harness. Each runs that harness's Temporal worker.
+#
+# - extractor, reviewer: each runs its own Box Mount daemon over ITS OWN Box folder (Extraction/ or
+#   Review/ inside DEMO_BOX_FOLDER_ID; `just setup` creates them and writes their IDs to .env), so
+#   each agent sees only its own files. Exactly one sandbox per agent: every activity of an agent,
+#   including each Box file operation, runs on its Task Queue, so a second sandbox on the same queue
+#   would split the agent's writes across two Box Mounts (conflict copies; see README).
+# - coordinator: no Box Mount. Its worker uses the Box API (versions, SHA-1s, server-side copies)
+#   and never holds file content.
+#
+# Sandboxes share nothing but Box (files) and Temporal (orchestration).
+x-sandbox: &sandbox
+  image: box-agent-sandbox:dev
+  platform: linux/arm64
+  env_file: [.env, .env.local]
+  extra_hosts: ["host.docker.internal:host-gateway"]
+  restart: unless-stopped
+  depends_on: [build]
+
+x-env: &env
+  TEMPORAL_ADDRESS: host.docker.internal:7233
+  DEMO_REASONING_EFFORT: ${DEMO_REASONING_EFFORT:-low}
+  DEMO_IDLE_CLOSE_MINUTES: ${DEMO_IDLE_CLOSE_MINUTES:-10}
+
+services:
+  # Builds the shared image once; exits immediately.
+  build:
+    image: box-agent-sandbox:dev
+    build: { context: ., dockerfile: docker/Dockerfile }
+    entrypoint: ["true"]
+    restart: "no"
+
+  coordinator:
+    <<: *sandbox
+    container_name: sandbox-coordinator
+    hostname: sandbox-coordinator
+    # Databricks credentials only here, in the outer harness's sandbox, where no model-written code runs.
+    env_file: [.env, .env.local, { path: .env.databricks, required: false }]
+    environment: { <<: *env, DEMO_ROLE: coordinator, BOX_MOUNT: "off" }
+    volumes: [coordinator-state:/home/boxsvc/.box-mount, &code ./demo:/app/demo:ro, &scripts ./scripts:/app/scripts:ro, &payloads /tmp/temporal-large-payloads:/tmp/temporal-large-payloads]
+
+  extractor:
+    <<: *sandbox
+    container_name: sandbox-extractor
+    hostname: sandbox-extractor
+    environment: { <<: *env, DEMO_ROLE: extractor, BOX_FOLDER_ID: "${DEMO_EXTRACTION_FOLDER_ID}" }
+    volumes: [extractor-state:/home/boxsvc/.box-mount, extractor-box:/mnt/box, *code, *scripts, *payloads]
+
+  reviewer:
+    <<: *sandbox
+    container_name: sandbox-reviewer
+    hostname: sandbox-reviewer
+    environment: { <<: *env, DEMO_ROLE: reviewer, BOX_FOLDER_ID: "${DEMO_REVIEW_FOLDER_ID}" }
+    volumes: [reviewer-state:/home/boxsvc/.box-mount, reviewer-box:/mnt/box, *code, *scripts, *payloads]
+
+
+# The Box key is copied into each sandbox's *-state volume by `just up`, never bind-mounted:
+# Docker Desktop's macOS file sharing ignores Linux permissions, so the agent user could read it.
+# Box Mount's folder and state stay inside the Linux VM: the daemon watches the folder with
+# inotify, which doesn't see changes made through a macOS bind mount.
+volumes:
+  coordinator-state:
+  extractor-state:
+  extractor-box:
+  reviewer-state:
+  reviewer-box:
