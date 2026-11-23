@@ -208,32 +208,41 @@ named for what they do (`wait_for_file_to_sync_from_box`, `get_box_file_version`
 
 ## Box Mount behaviour this demo works around
 
-Found on Box Mount 0.6.0. The workarounds stay in place on 0.8.0, which the demo now ships with;
-not every issue has been re-checked there.
+These were found on Box Mount 0.6.0. The demo now expects 0.8.0 and keeps every workaround, but
+not every issue has been re-checked on 0.8.0. Each entry says what happens, then what the demo
+does about it.
 
-1. **Inode reuse after a remote delete.** When a folder is deleted in Box, other sandboxes remove
-   it locally but keep the mapping from its inode to the trashed Box id
-   (`delete_local_item ... Unable to resolve local item`). A folder created later that reuses
-   the inode is treated as the trashed folder: creating children fails with `Not Found`, and files
-   are uploaded to the **top of the mounted Box folder** instead. A local update to a file whose
-   Box copy was trashed retries `Not Found` forever. *Workaround:* nothing in the mount is deleted
-   during a run, each run writes a fresh `Work/<case>/<run>/` folder, and `just reset` wipes the
-   sandboxes' local state before deleting old outputs in Box.
-2. **Restart in a new container.** `mount` refuses an existing mount record whose PID is dead (and
-   often reused in the new container). Plain `unmount` is a reset: it deletes the sync database
-   and re-downloads. The entrypoint does unmount + mount (about a minute on 0.8.0, whose mount
-   and unmount each run a full sync).
-3. **Occasional missed change notification.** A remote change can sit unsynced until the next
-   event in the folder. `wait_for_file_to_sync_from_box` writes a small pulse file under `_sync/` from its second
-   check on, which makes the daemon re-list remote changes.
-4. **Conflict-copy loop.** Two sandboxes wrote the same new file within milliseconds (an empty
-   write, then the content). One daemon created `review_memo.conflict.local.<timestamp>.md` and then
-   kept creating and uploading a new conflict copy every 2-3 s (78 in 4 minutes) until it was
-   stopped. *Workaround:* one writer sandbox per agent.
-5. Downloaded files are made group read-only, so `BoxMountFS.write` falls back to
-   write-then-rename for a file synced in from another sandbox (Box records a new file, not a
-   version).
-6. The OAuth access token is logged in plain text at INFO by the bundled SDK.
+1. **A new folder can inherit a deleted folder's identity.** When a folder is deleted in Box, the
+   other sandboxes remove their copy but keep the link between its local inode and the trashed
+   Box item (the log shows `delete_local_item ... Unable to resolve local item`). If a folder
+   created later reuses that inode, Box Mount treats it as the trashed folder: creating files in
+   it fails with `Not Found`, and files land at the top of the mounted Box folder instead. A local
+   edit to a file whose Box copy is in the trash retries `Not Found` forever.
+   *Workaround:* nothing in a mount is deleted during a run, each run writes to a new
+   `Work/<case>/<run>/` folder, and `just reset` clears the sandboxes' local state before it
+   deletes old outputs in Box.
+2. **A restarted container can't remount straight away.** `mount` refuses to start over the mount
+   record a previous container left, because its process ID is dead (or reused by a different
+   process in the new container). `unmount` clears the record, but it also deletes the sync
+   database, so everything downloads again.
+   *Workaround:* the sandbox's entrypoint runs `unmount`, then `mount`. On 0.8.0 that takes about
+   a minute, because each of them runs a full sync.
+3. **A change in Box is sometimes missed.** A remote change can stay unsynced until something else
+   changes in the folder.
+   *Workaround:* from its second check on, `wait_for_file_to_sync_from_box` asks for a small pulse
+   file to be written under `_sync/`. Uploading it makes the daemon list remote changes again.
+4. **Two writers can start a conflict-copy loop.** When two sandboxes wrote the same new file
+   within milliseconds (an empty write, then the content), one daemon created
+   `review_memo.conflict.local.<timestamp>.md`, then kept creating and uploading another conflict
+   copy every 2 to 3 seconds (78 in 4 minutes) until it was stopped.
+   *Workaround:* exactly one sandbox writes for each agent.
+5. **Files synced in from Box are read-only to the agent.** Box Mount makes downloaded files group
+   read-only, so the agent can't edit them in place.
+   *Workaround:* for a file synced in this way, `BoxMountFS.write` writes a new file and renames it
+   over the old one. Box then records a new file rather than a new version of the old one.
+6. **The bundled SDK logs the OAuth access token in plain text** at INFO level.
+   *Workaround:* the daemon's full log stays in its state directory, which only the daemon's
+   user can read, and `docker logs` shows only a filtered set of sync events.
 
 ## Agent Kit notes (`temporal-agent-kit` 0.12.1)
 
