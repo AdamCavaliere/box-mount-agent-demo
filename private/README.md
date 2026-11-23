@@ -1,7 +1,8 @@
 # Box Mount binary (you provide it)
 
-Box Mount is a Box preview and isn't included in this repository. Ask your Box contact for
-access, then put the **Linux arm64** build here:
+Box Mount is in preview and isn't included in this repository. [Request access to the Box Mount
+preview](https://bit.ly/box-mount-preview) (participants get the binary and setup guidance), then
+put the **Linux arm64** build here:
 
 ```
 private/box-mount-0.8.0/box-mount

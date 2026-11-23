@@ -4,7 +4,7 @@
 #   Review/ inside DEMO_BOX_FOLDER_ID; `just setup` creates them and writes their IDs to .env), so
 #   each agent sees only its own files. Exactly one sandbox per agent: every activity of an agent,
 #   including each Box file operation, runs on its Task Queue, so a second sandbox on the same queue
-#   would split the agent's writes across two Box Mounts (conflict copies; see README).
+#   would split the agent's writes across two Box Mounts.
 # - coordinator: no Box Mount. Its worker uses the Box API (versions, SHA-1s, server-side copies)
 #   and never holds file content.
 #

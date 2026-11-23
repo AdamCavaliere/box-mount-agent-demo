@@ -71,8 +71,8 @@ Temporal's event history is what to search the code for.
   to the coordinator's sandbox.
 - **One sandbox per agent.** Every activity of an agent, including each Box file operation, runs on
   its Task Queue. A second sandbox polling the same queue would split one agent's writes across two
-  Box Mounts, which produced a conflict-copy loop. So the crash moment kills and restarts the
-  worker inside its own sandbox rather than failing over.
+  Box Mounts. So the crash moment kills and restarts the worker inside its own sandbox rather than
+  failing over.
 
 ## Code tour
 
@@ -91,7 +91,7 @@ Read in this order; each file opens with a docstring that explains its part.
 | [`demo/worker.py`](demo/worker.py) | One worker per sandbox: which workflow it hosts, the Agent Kit and OpenAI plugins, and the activities it registers. |
 | [`demo/agents/idle.py`](demo/agents/idle.py) | A session closes itself after 10 minutes without messages, so old ones don't pile up in the Temporal UI. |
 | [`demo/models.py`](demo/models.py), [`demo/config.py`](demo/config.py), [`demo/fixtures.py`](demo/fixtures.py) | Shared data types, Task Queue names, and the demo's contract, playbook and simulated records. |
-| [`docker/entrypoint.sh`](docker/entrypoint.sh), [`docker-compose.yml`](docker-compose.yml) | The sandboxes: Box Mount as its own user, a supervisor that remounts a stuck daemon, the worker without Box credentials. |
+| [`docker/entrypoint.sh`](docker/entrypoint.sh), [`docker-compose.yml`](docker-compose.yml) | The sandboxes: Box Mount as its own user, the worker without Box credentials. |
 | [`scripts/`](scripts/) | `box_folders.py` (set up and reset the Box folders), `databricks_admin.py`, `ticker.py`, `crash.py`, `make_seed.py`, `agent_kit_cli.py` (readable session IDs), and the Ghostty launch scripts. |
 
 ## Run it
@@ -102,8 +102,10 @@ Requirements:
   `just stop` drive Ghostty (1.3 or later) with AppleScript.
 - Docker Desktop, [`uv`](https://docs.astral.sh/uv/), [`just`](https://just.systems/) and the
   [`temporal` CLI](https://docs.temporal.io/cli) (its dev server is the Temporal Service here).
-- **Box Mount, which you provide.** It's a Box preview and isn't in this repository: ask Box for
-  access, then put the Linux arm64 `box-mount` binary at `private/box-mount-0.8.0/box-mount`
+- **Your own Box Mount binary.** Box Mount is in preview and isn't included in this repository.
+  [Request access to the Box Mount preview](https://bit.ly/box-mount-preview); participants get the
+  binary and setup guidance (see also Box's [Box Mount guide](https://developer.box.com/guides/box-mount)).
+  Put the Linux arm64 `box-mount` binary at `private/box-mount-0.8.0/box-mount`
   (see [`private/README.md`](private/README.md)). It's git-ignored, and `just up` stops with a
   message if it's missing.
 - **A Box JWT app** whose service account can edit a **new, empty Box folder**: its config at
@@ -205,44 +207,6 @@ so an agent's history shows its whole conversation with the UI, not just its act
 named for what they do (`wait_for_file_to_sync_from_box`, `get_box_file_version`,
 `copy_box_file_version`, `continue_with_changed_file`, ...); file operations appear as
 `vfs.box-mount.read` / `.write` and model calls as `invoke_model_activity_streaming`.
-
-## Box Mount behaviour this demo works around
-
-These were found on Box Mount 0.6.0. The demo now expects 0.8.0 and keeps every workaround, but
-not every issue has been re-checked on 0.8.0. Each entry says what happens, then what the demo
-does about it.
-
-1. **A new folder can inherit a deleted folder's identity.** When a folder is deleted in Box, the
-   other sandboxes remove their copy but keep the link between its local inode and the trashed
-   Box item (the log shows `delete_local_item ... Unable to resolve local item`). If a folder
-   created later reuses that inode, Box Mount treats it as the trashed folder: creating files in
-   it fails with `Not Found`, and files land at the top of the mounted Box folder instead. A local
-   edit to a file whose Box copy is in the trash retries `Not Found` forever.
-   *Workaround:* nothing in a mount is deleted during a run, each run writes to a new
-   `Work/<case>/<run>/` folder, and `just reset` clears the sandboxes' local state before it
-   deletes old outputs in Box.
-2. **A restarted container can't remount straight away.** `mount` refuses to start over the mount
-   record a previous container left, because its process ID is dead (or reused by a different
-   process in the new container). `unmount` clears the record, but it also deletes the sync
-   database, so everything downloads again.
-   *Workaround:* the sandbox's entrypoint runs `unmount`, then `mount`. On 0.8.0 that takes about
-   a minute, because each of them runs a full sync.
-3. **A change in Box is sometimes missed.** A remote change can stay unsynced until something else
-   changes in the folder.
-   *Workaround:* from its second check on, `wait_for_file_to_sync_from_box` asks for a small pulse
-   file to be written under `_sync/`. Uploading it makes the daemon list remote changes again.
-4. **Two writers can start a conflict-copy loop.** When two sandboxes wrote the same new file
-   within milliseconds (an empty write, then the content), one daemon created
-   `review_memo.conflict.local.<timestamp>.md`, then kept creating and uploading another conflict
-   copy every 2 to 3 seconds (78 in 4 minutes) until it was stopped.
-   *Workaround:* exactly one sandbox writes for each agent.
-5. **Files synced in from Box are read-only to the agent.** Box Mount makes downloaded files group
-   read-only, so the agent can't edit them in place.
-   *Workaround:* for a file synced in this way, `BoxMountFS.write` writes a new file and renames it
-   over the old one. Box then records a new file rather than a new version of the old one.
-6. **The bundled SDK logs the OAuth access token in plain text** at INFO level.
-   *Workaround:* the daemon's full log stays in its state directory, which only the daemon's
-   user can read, and `docker logs` shows only a filtered set of sync events.
 
 ## Agent Kit notes (`temporal-agent-kit` 0.12.1)
 
